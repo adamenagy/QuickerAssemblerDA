@@ -30,10 +30,15 @@ function loadModels(data, objectNameBase) {
 
 function onDocumentLoadSuccess(component) {
     return function (doc) {
+        var s = component
         var viewables = doc.getRoot().getDefaultGeometry();
+        let mx = new THREE.Matrix4()
+        mx.fromArray(component.cells)
         let opt = {
-            placementTransform: THREE.Matrix4()
+            placementTransform: mx,
+            globalOffset:{x:0,y:0,z:0},
         }
+        console.log(opt)
         viewer.loadDocumentNode(doc, viewables, opt).then(i => {
             // documented loaded, any action?
         });
