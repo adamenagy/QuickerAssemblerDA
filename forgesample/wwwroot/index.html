@@ -1,0 +1,98 @@
+﻿<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Autodesk Forge - Design Automation</title>
+    <meta charset="utf-8" />
+    <link rel="shortcut icon" href="https://github.com/Autodesk-Forge/learn.forge.viewhubmodels/raw/master/img/favicon.ico">
+    <!-- Common packages: jQuery, Bootstrap -->
+    <script src="//cdnjs.cloudflare.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/js/bootstrap.min.js"></script>
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.4.1/css/bootstrap.min.css">
+    <!-- Autodesk Forge Viewer files -->
+    <link rel="stylesheet" href="https://developer.api.autodesk.com/modelderivative/v2/viewers/7.*/style.min.css" type="text/css">
+    <script src="https://developer.api.autodesk.com/modelderivative/v2/viewers/7.*/viewer3D.min.js"></script>
+    <!-- .NET SignalR -->
+    <script src="//unpkg.com/@aspnet/signalr@1.1.0/dist/browser/signalr.min.js"></script>
+    <!-- Files for this project -->
+    <script src="/js/ForgeDesignAutomation.js"></script>
+    <script src="/js/ForgeViewer.js"></script>
+</head>
+
+<body style="height: 100%;">
+    <!-- Fixed navbar by Bootstrap: https://getbootstrap.com/examples/navbar-fixed-top/ -->
+    <nav class="navbar navbar-default navbar-fixed-top">
+        <div class="container-fluid">
+            <ul class="nav navbar-nav left">
+                <li>
+                    <a href="http://developer.autodesk.com" target="_blank">
+                        <img alt="Autodesk Forge" src="//developer.static.autodesk.com/images/logo_forge-2-line.png"
+                            height="20">
+                    </a>
+                </li>
+            </ul>
+            <div style="float: right; margin-top: 15px; cursor: pointer;">
+                <span style="padding-right: 5px;" data-toggle="modal" data-target="#defineActivityModal" title="Configura AppBundle & Activity"><span
+                        class="glyphicon glyphicon-cog glyphiconTop mlink"> </span> Configure</span>
+            </div>
+        </div>
+    </nav>
+    <!-- End of navbar -->
+    <div class="container-fluid" style="margin-top: 70px;">
+        <div class="row">
+            <div class="col-sm-4">
+                <div class="form-group">
+                    <label for="shelfWidth">Shelf Width:</label>
+                    <select type="number" class="form-control" id="shelfWidth">
+                        <option value="90">90 cm</option>
+                        <option value="120">120 cm</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="height">Height:</label>
+                    <select type="number" class="form-control" id="height">
+                        <option value="90">90 cm</option>
+                        <option value="180">180 cm</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="numberOfColumns">Number of columns:</label>
+                    <select type="number" class="form-control" id="numberOfColumns">
+                        <option value="1">1</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                        <option value="4">4</option>
+                    </select>
+                </div>
+
+                <center><button class="btn btn-primary disabled" id="startWorkitem">Start workitem</button></center><br />
+                <img style='display:block; width:100px;height:100px;' id='base64image'
+                     src='' />
+                <div id="forgeViewer"></div>
+            </div>
+            <div class="col-sm-8">
+                <pre id="outputlog" style="height: calc(100vh - 120px);; overflow-y: scroll;"></pre>
+            </div>
+        </div>
+    </div>
+    <!-- Modal Define AppBundle & Activity -->
+    <div class="modal fade" id="defineActivityModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Cancel"><span aria-hidden="true">&times;</span></button>
+                    <h4 class="modal-title" id="myModalLabel">Create/Update AppBundle & Activity</h4>
+                </div>
+                <div class="modal-body">
+                  <div class="alert alert-warning"><center>You just need to define AppBundle &amp; Activity once.<br />If the plugin code changed, redefine (creates a new version).</center></div>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-danger" id="clearAccount">Clear account</button>
+                    <button type="button" class="btn btn-primary" id="createAppBundleActivity">Create/Update</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>
