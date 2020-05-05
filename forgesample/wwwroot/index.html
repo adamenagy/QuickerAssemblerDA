@@ -17,6 +17,70 @@
     <!-- Files for this project -->
     <script src="/js/ForgeDesignAutomation.js"></script>
     <script src="/js/ForgeViewer.js"></script>
+    <style>
+        #outputlog {
+            height: calc(100vh - 435px);
+        }
+        #forgeViewer {
+            height: 100%; 
+            width: 100%; 
+            position: relative; 
+            padding: 0px;
+            z-index: 0;
+        }
+        #rightColumn {
+            height: calc(100vh - 120px);
+        }
+        #progressIcon {
+            font-size: 50px;
+            color:white;
+            z-index: 3;
+            position: absolute; 
+            top: calc(50% - 25px);
+            left: calc(50% - 25px); /* height divided by 2 */
+            text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000;
+            display: none;
+        }
+
+        .previewImage {
+            display:block; 
+            width:100px; 
+            position: absolute; 
+            top:0px; 
+            left: 0px; 
+            object-fit: cover;
+            z-index: 2;
+        }
+        .coverViewer {
+            width: 100%;
+            height: 100%;
+        }
+        .glyphicon-spin {
+            -webkit-animation: spin 1000ms infinite linear;
+            animation: spin 1000ms infinite linear;
+        }
+
+        @-webkit-keyframes spin {
+            0% {
+                -webkit-transform: rotate(0deg);
+                transform: rotate(0deg);
+            }
+            100% {
+                -webkit-transform: rotate(359deg);
+                transform: rotate(359deg);
+            }
+        }
+        @keyframes spin {
+            0% {
+                -webkit-transform: rotate(0deg);
+                transform: rotate(0deg);
+            }
+            100% {
+                -webkit-transform: rotate(359deg);
+                transform: rotate(359deg);
+            }
+        }
+    </style>
 </head>
 
 <body style="height: 100%;">
@@ -40,7 +104,7 @@
     <!-- End of navbar -->
     <div class="container-fluid" style="margin-top: 70px;">
         <div class="row">
-            <div class="col-sm-4">
+            <div class="col-sm-4" id="leftColumn">
                 <div class="form-group">
                     <label for="shelfWidth">Shelf Width:</label>
                     <select type="number" class="form-control" id="shelfWidth">
@@ -64,14 +128,25 @@
                         <option value="4">4</option>
                     </select>
                 </div>
+                <div class="form-group">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="hideLoading" required>
+                        <label class="form-check-label" for="hideLoading">
+                          Hide loading in Viewer
+                        </label>
+                      </div>
+                </div>
 
                 <center><button class="btn btn-primary disabled" id="startWorkitem">Start workitem</button></center><br />
-                <img style='display:block; width:100px;height:100px;' id='base64image'
-                     src='' />
-                <div id="forgeViewer"></div>
+                <div class="form-group" >
+                    <pre id="outputlog" class="form-control"></pre>
+                </div>
             </div>
-            <div class="col-sm-8">
-                <pre id="outputlog" style="height: calc(100vh - 120px);; overflow-y: scroll;"></pre>
+            <div class="col-sm-8" id="rightColumn">
+                <div id="forgeViewer" class="form-control">
+                    <img id='previewImage' class="previewImage" src='images/placeholder.png' />
+                    <div id="progressIcon" class="glyphicon glyphicon-refresh glyphicon-spin"></div>
+                </div>
             </div>
         </div>
     </div>

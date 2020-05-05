@@ -78,7 +78,7 @@ namespace forgeSample.Controllers
         /// Get all Activities defined for this account
         /// </summary>
         [HttpGet]
-        [Route("api/forge/designautomation/activities")]
+        [Route("api/forge/designautomation/activities")] 
         public async Task<List<string>> GetDefinedActivities()
         {
             System.Diagnostics.Debug.WriteLine("GetDefinedActivities");
@@ -287,7 +287,7 @@ namespace forgeSample.Controllers
         /// </summary>
         [HttpPost]
         [Route("api/forge/designautomation/workitems")]
-        public async Task<IActionResult> StartWorkitem([FromBody]JObject input)
+        public async Task<IActionResult> StartWorkitems([FromBody]JObject input)
         {
             System.Diagnostics.Debug.WriteLine("StartWorkitem");
             string browerConnectionId = input["browerConnectionId"].Value<string>();
@@ -298,23 +298,21 @@ namespace forgeSample.Controllers
             string pngFileName = browerConnectionId + ".png";                
             string pngWorkItemId = await CreateWorkItem(
                 input,
-                oauth.access_token,
+                new Dictionary<string, string>() { { "Authorization", "Bearer " + oauth.access_token } },
                 browerConnectionId,
                 "outputPng",
-                //"https://engcqc9yvi887.x.pipedream.net"
-                //string.Format("{0}/api/forge/callback/ondata/png", OAuthController.GetAppSetting("FORGE_WEBHOOK_URL"))
-                pngFileName
+                pngFileName,
+                string.Format("https://developer.api.autodesk.com/oss/v2/buckets/{0}/objects/{1}", BucketKey, pngFileName)
             );
-            
 
             string jsonFileName = browerConnectionId + ".json";
             string jsonWorkItemId = await CreateWorkItem(
                 input,
-                oauth.access_token,
+                new Dictionary<string, string>() { { "Content-Type", "application/json" } },
                 browerConnectionId,
                 "outputJson",
-                jsonFileName
-            //string.Format("{0}/api/forge/callback/ondata/json?id={1}", OAuthController.GetAppSetting("FORGE_WEBHOOK_URL"), browerConnectionId)
+                jsonFileName,
+                string.Format("{0}/api/forge/callback/ondata/json?id={1}", OAuthController.GetAppSetting("FORGE_WEBHOOK_URL"), browerConnectionId)
             );
 
             /*
@@ -333,31 +331,27 @@ namespace forgeSample.Controllers
                 ZipWorkItemId = "zipWorkItemId"
             });
         }
-        private async Task<string> CreateWorkItem(JObject input, string accessToken, string browerConnectionId, string outputName, string fileName)
+        private async Task<string> CreateWorkItem(JObject input, Dictionary<string, string> headers, string browerConnectionId, string outputName, string fileName, string url)
         {
             input["output"] = outputName;
             XrefTreeArgument inputJsonArgument = new XrefTreeArgument()
             {
-                Url = "data:text/plain," + input.ToString(Formatting.None)
+                Url = "data:application/json," + input.ToString(Formatting.None)
             };
-            // 3. output file
-            string url = string.Format("https://developer.api.autodesk.com/oss/v2/buckets/{0}/objects/{1}", BucketKey, fileName);
+
             XrefTreeArgument outputArgument = new XrefTreeArgument()
             {
                 Url = url,
                 Verb = Verb.Put,
-                Headers = new Dictionary<string, string>()
-                {
-                    { "Authorization", "Bearer " + accessToken },
-                    //{ "Accept", "binary/octet-stream" },
-                    //{ "Content-Type", "application/octet-stream" },
-                    //{ "Accept-Encoding", "gzip,deflate" }
-                }
+                Headers = headers
             };
 
-            // prepare & submit workitem
-            //string callbackProgress = string.Format("{0}/api/forge/callback/onprogress?id={1}", OAuthController.GetAppSetting("FORGE_WEBHOOK_URL"), browerConnectionId);
-            string callbackComplete = string.Format("{0}/api/forge/callback/oncomplete?id={1}&outputFile={2}", OAuthController.GetAppSetting("FORGE_WEBHOOK_URL"), browerConnectionId, fileName);
+            string callbackComplete = string.Format(
+                "{0}/api/forge/callback/oncomplete?id={1}&outputFile={2}", 
+                OAuthController.GetAppSetting("FORGE_WEBHOOK_URL"), 
+                browerConnectionId, 
+                fileName);
+
             WorkItem workItemSpec = new WorkItem()
             {
                 ActivityId = QualifiedBundleActivityName,
@@ -376,17 +370,25 @@ namespace forgeSample.Controllers
 
         /// <summary>
         /// Define a new appbundle
+        /// test with curl:
+        /// with form: curl -F 'img_avatar=@/Users/nagyad/Documents/boxHammer.csv' http://localhost:3000/api/forge/callback/ondata/png
+        /// file: curl -X POST --header "Content-Type:application/octet-stream" --data @/Users/nagyad/Documents/boxHammer.csv http://localhost:3000/api/forge/callback/ondata/png
+        /// json: curl -X POST --header "Content-Type:application/json" --data '{"hello":"value"}' http://localhost:3000/api/forge/callback/ondata/json
         /// </summary>
-        [HttpPost]
-        [Route("api/forge/callback/ondata/png")]
-        [Consumes("application/octet-stream", new string[] { "application/pdf", "image/jpg", "image/jpeg", "image/png", "image/tiff", "image/tif" })]
-        public async Task<IActionResult> OnData([FromBody] Stream data)
+        [HttpPut]
+        [Route("api/forge/callback/ondata/json")]
+        public async Task<IActionResult> OnData([FromRoute] string dataType, [FromQuery] string id, [FromBody] JObject data)
         {
+            System.Diagnostics.Debug.WriteLine("OnData, dataType = " + dataType);
+
+            await _hubContext.Clients.Client(id).SendAsync("onComponents", data.ToString(Formatting.None));
+            
             return Ok();
         }
 
         /// <summary>
         /// Define a new appbundle
+        /// basic: curl -X POST --header "Content-Type:application/json" --data '{"hello":"value"}' http://localhost:3000/api/forge/callback/onprogress
         /// </summary>
         [HttpPost]
         [Route("api/forge/callback/onprogress")]
@@ -397,7 +399,6 @@ namespace forgeSample.Controllers
             if (!data.ContainsKey("progress"))
                 return Ok();
 
-            //JObject jProgress = JObject.Parse(data["progress"].Value<string>());
             try
             {
                 string base64 = data["progress"].Value<string>();
@@ -411,7 +412,6 @@ namespace forgeSample.Controllers
             {
                 System.Diagnostics.Debug.WriteLine("OnProgress, e.Message = " + e.Message);
             }
-            
 
             return Ok();
         }
@@ -445,25 +445,6 @@ namespace forgeSample.Controllers
                     dynamic signedUrl = await objects.CreateSignedResourceAsyncWithHttpInfo(BucketKey, outputFile, new PostBucketsSigned(10), "read");
                     await _hubContext.Clients.Client(id).SendAsync("onPicture", (string)(signedUrl.Data.signedUrl));
                 } 
-                else if (outputFile.EndsWith(".json"))
-                {
-                    dynamic oauth = await OAuthController.GetInternalAsync();
-                    ObjectsApi objects = new ObjectsApi();
-                    objects.Configuration.AccessToken = oauth.access_token;
-                    FileStream s = await objects.GetObjectAsync(BucketKey, outputFile);
-                    string fileContents;
-                    using (StreamReader reader = new StreamReader(s))
-                    {
-                        fileContents = reader.ReadToEnd();
-                    }
-                    /*
-                    using (StreamReader sr = new StreamReader(s))
-                    using (JsonReader reader = new JsonTextReader(sr))
-                    {
-                        JObject obj = JObject.Load(reader)
-                    }*/
-                    await _hubContext.Clients.Client(id).SendAsync("onComponents", fileContents);
-                }
             }
             catch (Exception e) 
             {

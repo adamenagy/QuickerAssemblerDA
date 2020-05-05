@@ -5,6 +5,10 @@ using Microsoft.AspNetCore.Mvc.ModelBinding;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using System.IO;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Mvc.Formatters;
+using Microsoft.Net.Http.Headers;
+using System;
 
 namespace forgeSample
 {
@@ -17,6 +21,7 @@ namespace forgeSample
             services.AddMvc(options => {
                 options.EnableEndpointRouting = false;
                 options.ModelMetadataDetailsProviders.Add(new SuppressChildValidationMetadataProvider(typeof(Stream)));
+                options.InputFormatters.Insert(0, new RawRequestBodyFormatter());
             }).SetCompatibilityVersion(CompatibilityVersion.Version_3_0).AddNewtonsoftJson();
             services.AddSignalR();
         }
@@ -30,8 +35,64 @@ namespace forgeSample
                 routes.MapHub<Controllers.DesignAutomationHub>("/api/signalr/designautomation");
             });
 
-            app.UseFileServer();
+            var fileServerOptions = new FileServerOptions();
+            fileServerOptions.StaticFileOptions.ServeUnknownFileTypes = true;
+            app.UseFileServer(fileServerOptions);
             app.UseMvc();
+        }
+    }
+
+    /// <summary>
+    /// Formatter that allows content of type text/plain and application/octet stream
+    /// or no content type to be parsed to raw data. Allows for a single input parameter
+    /// in the form of:
+    /// 
+    /// public string RawString([FromBody] string data)
+    /// public byte[] RawData([FromBody] byte[] data)
+    /// </summary>
+    public class RawRequestBodyFormatter : InputFormatter
+    {
+        public RawRequestBodyFormatter()
+        {
+            SupportedMediaTypes.Add(new MediaTypeHeaderValue("text/plain"));
+            SupportedMediaTypes.Add(new MediaTypeHeaderValue("application/octet-stream"));
+        }
+
+
+        /// <summary>
+        /// Allow text/plain, application/octet-stream and no content type to
+        /// be processed
+        /// </summary>
+        /// <param name="context"></param>
+        /// <returns></returns>
+        public override Boolean CanRead(InputFormatterContext context)
+        {
+            if (context == null) throw new ArgumentNullException(nameof(context));
+
+            var contentType = context.HttpContext.Request.ContentType;
+            if (contentType == "application/octet-stream")
+                return true;
+
+            return false;
+        }
+
+        /// <summary>
+        /// Handle text/plain or no content type for string results
+        /// Handle application/octet-stream for byte[] results
+        /// </summary>
+        /// <param name="context"></param>
+        /// <returns></returns>
+        public override async Task<InputFormatterResult> ReadRequestBodyAsync(InputFormatterContext context)
+        {
+            var request = context.HttpContext.Request;
+            var contentType = context.HttpContext.Request.ContentType;
+
+            if (contentType == "application/octet-stream")
+            {
+                return await InputFormatterResult.SuccessAsync(request.Body);
+            }
+
+            return await InputFormatterResult.FailureAsync();
         }
     }
 }

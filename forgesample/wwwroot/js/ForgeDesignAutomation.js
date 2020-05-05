@@ -98,7 +98,15 @@ function uploadSourceFiles(cb) {
     });
 }
 
+function showProgressIcon(show) {
+   $("#progressIcon").css('display', (show) ? 'block' : 'none')
+}
+
 function startWorkitem() {
+    showProgressIcon(true)
+
+    let width = Math.floor($("#forgeViewer").width())
+    let height = Math.floor($("#forgeViewer").height())
     MyVars.base64png = "";
     var data = {
         browerConnectionId: connectionId,
@@ -108,8 +116,8 @@ function startWorkitem() {
             numberOfColumns: `${$("#numberOfColumns").val()}`
         },
         screenshot: {
-            width: 400,
-            height: 400,
+            width: width,
+            height: height,
             position: [10, 10, 10],
             target: [0, 0, 0],
             up: [0, 0, 1]
@@ -166,16 +174,30 @@ function startConnection(onReady) {
         /*
         MyVars.base64png += message.substr(6, message.length - 6);
         if (message.startsWith("pngend")) {
-            $("#base64image").attr("src", "data:image/png;base64, " + MyVars.base64png);
+            $("#previewImage").attr("src", "data:image/png;base64, " + MyVars.base64png);
         } 
         */
-        $("#base64image").attr("src", message)
+        $("#previewImage").attr("src", message)
 
         writeLog(message);
     });
 
-    connection.on("onComponents", function (message) {
+    connection.on("onComponents", async function (message) {
         writeLog(message);
-        launchViewer(JSON.parse(message), "urn:adsk.objects:os.object:rgm0mo9jvssd2ybedk9mrtxqtwsa61y0-designautomation/")
+        let hideLoading = $("#hideLoading").is(":checked")
+
+        console.log('Hide Viewer')
+        if (hideLoading) {
+            $('#previewImage').toggleClass('coverViewer')
+        }
+        
+        await launchViewer(JSON.parse(message), "urn:adsk.objects:os.object:rgm0mo9jvssd2ybedk9mrtxqtwsa61y0-designautomation/")
+        console.log('Reveal Viewer')
+
+        if (hideLoading) {
+            $('#previewImage').toggleClass('coverViewer')
+        }
+
+        showProgressIcon(false)
     });
 }
