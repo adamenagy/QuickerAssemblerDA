@@ -5,21 +5,27 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": ".NET Core Launch (console)",
+      "name": ".NET Core Launch (web)",
       "type": "coreclr",
       "request": "launch",
       "preLaunchTask": "build",
       "program": "${workspaceFolder}/bin/Debug/netcoreapp3.0/forgesample.dll",
       "args": [],
       "cwd": "${workspaceFolder}",
-      "console": "internalConsole",
       "stopAtEntry": false,
+      "serverReadyAction": {
+        "action": "openExternally",
+        "pattern": "^\\s*Now listening on:\\s+(https?://\\S+)"
+      },
       "env": {
         "FORGE_CLIENT_SECRET": "",
         "ASPNETCORE_URLS": "http://localhost:3000",
         "FORGE_CLIENT_ID": "",
         "ASPNETCORE_ENVIRONMENT": "Development",
-        "FORGE_WEBHOOK_URL": "http://0be8ed1e.ngrok.io"
+        "FORGE_WEBHOOK_URL": "http://3f13fe1d.ngrok.io"
+      },
+      "sourceFileMap": {
+        "/Views": "${workspaceFolder}/Views"
       }
     },
     {
