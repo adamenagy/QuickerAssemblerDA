@@ -1,24 +1,24 @@
 # learn.forge.designautomation - ASP.NET Core
 
 ![Platforms](https://img.shields.io/badge/platform-Windows|MacOS-lightgray.svg)
-![.NET](https://img.shields.io/badge/.NET%20Core-2.1-blue.svg)
-[![License](http://img.shields.io/:license-MIT-blue.svg)](http://opensource.org/licenses/MIT)
+![.NET](https://img.shields.io/badge/.NET%20Core-3.1-blue.svg)
+[![License](https://img.shields.io/:license-MIT-blue.svg)](http://opensource.org/licenses/MIT)
 
 [![oAuth2](https://img.shields.io/badge/oAuth2-v1-green.svg)](http://developer.autodesk.com/)
 [![Data-Management](https://img.shields.io/badge/Data%20Management-v1-green.svg)](http://developer.autodesk.com/)
 [![Design-Automation](https://img.shields.io/badge/Design%20Automation-v3-green.svg)](http://developer.autodesk.com/)
 
-![Basic](https://img.shields.io/badge/Level-Basic-blue.svg)
+![Basic](https://img.shields.io/badge/Level-Intermediate-blue.svg)
 
 # Description
 
-Webapp interface that uses Design Automation to update the `width` and `height` param of DWG Dynamic Block (using AutoCAD), RVT Window Family instance (using Revit), IPT Part parameters (using Inventor) and 3DS ... (using 3dsMax). Also includes a `Clear Account` (remove all AppBundles and Activities) and `Define new Activity` based on the sample code. Uses ASP.NET Core SignalR to update the interface.
+Webapp interface that uses Design Automation to update the parameters of the model that drives which components will be used in the assembly. Also includes a `Clear Account` (remove all AppBundles and Activities) and `Define new Activity` based on the sample code. Uses ASP.NET Core SignalR to update the interface.
 
 See other projects for bundles.
 
 ## Thumbnail
 
-![thumbnail](../thumbnail.gif)
+![thumbnail](../thumbnail.png)
 
 # Setup
 
@@ -29,11 +29,15 @@ See other projects for bundles.
 3. **.NET Core** basic knowledge with C#
 4. **ngrok**: Routing tool, [download here](https://ngrok.com/). 
 
+## Live
+
+https://forge-configurator.herokuapp.com/
+
 ## Running locally
 
 Clone this project or download it. It's recommended to install [GitHub desktop](https://desktop.github.com/). To clone it via command line, use the following (**Terminal** on MacOSX/Linux, **Git Shell** on Windows):
 
-    git clone https://github.com/autodesk-forge/learn.forge.designautomation
+    git clone https://github.com/adamenagy/QuickerAssemblerDA
     
 **ngrok**
 
@@ -69,7 +73,7 @@ At the `.vscode\launch.json`, find the env vars and add your Forge Client ID, Se
 
 **How to use this sample**
 
-Open `http://localhost:3000` to start the app, if first time, click on `Define Activity`, enter new `width` & `height` values, select the input file (use from **sample files** folder), select the `Activity` and, finally, `Start workitem`. 
+Open `http://localhost:3000` to start the app, if first time, click on `Define Activity`, enter new parameter values, and click `Start workitem`. 
 
 # Further Reading
 
@@ -96,4 +100,4 @@ This sample is licensed under the terms of the [MIT License](http://opensource.o
 
 ## Written by
 
-Augusto Goncalves [@augustomaia](https://twitter.com/augustomaia), [Forge Partner Development](http://forge.autodesk.com)
+Adam Nagy [@adamthenagy](https://twitter.com/adamthenagy), [Developer Advocacy and Support](http://forge.autodesk.com)

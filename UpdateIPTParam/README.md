@@ -8,14 +8,16 @@
 
 # Description
 
-Inventor plugin that updates the `width` and `height` param of a Part.
+Based on the Design Automation for Inventor AppBundle from the learnforge.autdoesk.io site 
+
+Inventor plugin that updates 3 params of our assembly, generates a preview image and provides transformation values of each component in the assembly
 
 # Setup
 
 ## Prerequisites
 
-1. **Visual Studio** 2017
-2. **Inventor** 2019 required to compile changes into the plugin
+1. **Visual Studio** 2019
+2. **Inventor** 2020 required to compile changes into the plugin
 3. **7z zip** requires to create the bundle ZIP, [download here](https://www.7-zip.org/)
 
 ## References
@@ -29,7 +31,9 @@ This Inventor plugin requires **Autodesk.Inventor.Interop** reference, which sho
 Under **Properties**, at **Build Event** page, the following `Post-build event command line` will copy the DLL into the `\UpdateIPTParam.bundle/Content\` folder, create a `.ZIP` (using [7z](https://www.7-zip.org/)) and copy to the Webapp folder.
 
 ```
-xcopy /Y /F $(TargetDir)*.dll $(ProjectDir)UpdateIPTParam.bundle\Contents\del /F $(ProjectDir)..\forgesample\wwwroot\bundles\UpdateIPTParam.zip"C:\Program Files\7-Zip\7z.exe" a -tzip $(ProjectDir)../forgesample/wwwroot/bundles/UpdateIPTParam.zip  $(ProjectDir)UpdateIPTParam.bundle\ -xr0!*.pdb
+xcopy /Y /F $(TargetDir)*.dll $(ProjectDir)UpdateIPTParam.bundle\Contents\
+del /F $(ProjectDir)..\forgesample\wwwroot\bundles\UpdateIPTParam.zip
+"C:\Program Files\7-Zip\7z.exe" a -tzip $(ProjectDir)../forgesample/wwwroot/bundles/UpdateIPTParam.zip  $(ProjectDir)UpdateIPTParam.bundle\ -xr0!*.pdb
 ```
 
 ## Debug Locally
@@ -47,4 +51,5 @@ This sample is licensed under the terms of the [MIT License](http://opensource.o
 
 ## Written by
 
-Chandra Shekar, [Forge Partner Development](http://forge.autodesk.com)
+Adam Nagy \
+[Developer Advocacy and Support](http://forge.autodesk.com)
