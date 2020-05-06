@@ -190,7 +190,7 @@ function startConnection(onReady) {
             $('#previewImage').toggleClass('coverViewer')
         }
         
-        await launchViewer(JSON.parse(message), "urn:adsk.objects:os.object:rgm0mo9jvssd2ybedk9mrtxqtwsa61y0-designautomation/")
+        await launchViewer(JSON.parse(message))
         console.log('Reveal Viewer')
 
         if (hideLoading) {

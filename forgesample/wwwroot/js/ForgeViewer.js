@@ -1,7 +1,7 @@
 ﻿var viewer;
 var counter = 0;
 
-function launchViewer(data, objectNameBase) {
+function launchViewer(data) {
     return new Promise(async (resolve, reject) => {
         var options = {
             env: 'AutodeskProduction',
@@ -12,14 +12,14 @@ function launchViewer(data, objectNameBase) {
             viewer.tearDown();
             viewer.setUp(viewer.config);
 
-            await loadModels(data, objectNameBase)
+            await loadModels(data)
 
             resolve()
         } else {
             Autodesk.Viewing.Initializer(options, async () => {
                 viewer = new Autodesk.Viewing.GuiViewer3D(document.getElementById('forgeViewer'), { extensions: ['Autodesk.DocumentBrowser'] });
                 viewer.start();
-                await loadModels(data, objectNameBase)
+                await loadModels(data)
 
                 resolve()
             });
@@ -33,7 +33,7 @@ function loadModels(data, objectNameBase) {
         
         for (key in data.components) {
             let component = data.components[key]
-            var objectName = objectNameBase + component.fileName
+            var objectName = data.urnBase + component.fileName
             var documentId = 'urn:' + btoa(objectName);
 
             console.log('before promise, ' + component.fileName)

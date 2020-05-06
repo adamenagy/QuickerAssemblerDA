@@ -383,6 +383,8 @@ namespace forgeSample.Controllers
         {
             System.Diagnostics.Debug.WriteLine("OnData, dataType = " + dataType);
 
+            // urnBase, something like "urn:adsk.objects:os.object:rgm0mo9jvssd2ybedk9mrtxqtwsa61y0-designautomation/"
+            data["urnBase"] = "urn:adsk.objects:os.object:" + BucketKey + "/";
             await _hubContext.Clients.Client(id).SendAsync("onComponents", data.ToString(Formatting.None));
             
             return Ok();
