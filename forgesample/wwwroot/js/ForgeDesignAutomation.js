@@ -22,11 +22,21 @@ $(document).ready(function () {
     $('#createAppBundleActivity').click(createAppBundleActivity);
     $('#startWorkitem').click(startWorkitem);
 
+    showConfigureButton();
+
     startConnection();
 });
 
-MyVars = {
-    base64png: ""
+function showConfigureButton() {
+    jQuery.ajax({
+        url: 'api/forge/showconfigurebutton',
+        method: 'GET',
+        success: function (val) {
+            if (val) {
+                $("#showConfigureDialog").css("display", "block")
+            }
+        }
+    });    
 }
 
 function clearAccount() {
@@ -107,7 +117,6 @@ function startWorkitem() {
 
     let width = Math.floor($("#forgeViewer").width())
     let height = Math.floor($("#forgeViewer").height())
-    MyVars.base64png = "";
     var data = {
         browerConnectionId: connectionId,
         params: {
@@ -162,21 +171,11 @@ function startConnection(onReady) {
                 });
         });
 
-    connection.on("downloadResult", function (url) {
-        writeLog('<a href="' + url +'">Download result file here</a>');
-    });
-
     connection.on("onComplete", function (message) {
         writeLog(message);
     });
 
     connection.on("onPicture", function (message) {
-        /*
-        MyVars.base64png += message.substr(6, message.length - 6);
-        if (message.startsWith("pngend")) {
-            $("#previewImage").attr("src", "data:image/png;base64, " + MyVars.base64png);
-        } 
-        */
         $("#previewImage").attr("src", message)
 
         writeLog(message);

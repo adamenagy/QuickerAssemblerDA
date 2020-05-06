@@ -51,6 +51,16 @@ namespace forgeSample.Controllers
         }
 
         /// <summary>
+        /// Get access token with public (viewables:read) scope
+        /// </summary>
+        [HttpGet]
+        [Route("api/forge/showconfigurebutton")]
+        public bool ShowConfigureButtonAsync()
+        {
+            return (GetAppSetting("DISABLE_SETUP") != "true");
+        }
+
+        /// <summary>
         /// Get access token with internal (write) scope
         /// </summary>
         public static async Task<dynamic> GetInternalAsync()

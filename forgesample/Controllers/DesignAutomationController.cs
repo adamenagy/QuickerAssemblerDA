@@ -116,6 +116,11 @@ namespace forgeSample.Controllers
         [Route("api/forge/designautomation/files")]
         public async Task<IActionResult> UploadOssFiles([FromBody]JObject appBundleSpecs)
         {
+            if (OAuthController.GetAppSetting("DISABLE_SETUP") == "true")
+            {
+                return Unauthorized();
+            }
+
             System.Diagnostics.Debug.WriteLine("UploadOssFiles");
             // OAuth token
             dynamic oauth = await OAuthController.GetInternalAsync();
@@ -132,7 +137,7 @@ namespace forgeSample.Controllers
             buckets.Configuration.AccessToken = oauth.access_token;
             try
             {
-                PostBucketsPayload bucketPayload = new PostBucketsPayload(BucketKey, null, PostBucketsPayload.PolicyKeyEnum.Temporary);
+                PostBucketsPayload bucketPayload = new PostBucketsPayload(BucketKey, null, PostBucketsPayload.PolicyKeyEnum.Transient);
                 await buckets.CreateBucketAsync(bucketPayload, "US");
             }
             catch { }; // in case bucket already exists
@@ -167,8 +172,7 @@ namespace forgeSample.Controllers
 
                     derivative.TranslateAsync(job);
                 }
-            }
-            
+            }    
 
             return Ok();
         }
@@ -180,6 +184,11 @@ namespace forgeSample.Controllers
         [Route("api/forge/designautomation/appbundles")]
         public async Task<IActionResult> CreateAppBundle([FromBody]JObject appBundleSpecs)
         {
+            if (OAuthController.GetAppSetting("DISABLE_SETUP") == "true")
+            {
+                return Unauthorized();
+            }
+
             System.Diagnostics.Debug.WriteLine("CreateAppBundle");
             string zipFileName = "UpdateIPTParam.bundle";
 
@@ -249,6 +258,11 @@ namespace forgeSample.Controllers
         [Route("api/forge/designautomation/activities")]
         public async Task<IActionResult> CreateActivity([FromBody]JObject activitySpecs)
         {
+            if (OAuthController.GetAppSetting("DISABLE_SETUP") == "true")
+            {
+                return Unauthorized();
+            }
+
             System.Diagnostics.Debug.WriteLine("CreateActivity");
             Page<string> activities = await _designAutomation.GetActivitiesAsync();
             if (!activities.Data.Contains(QualifiedBundleActivityName))
@@ -315,20 +329,9 @@ namespace forgeSample.Controllers
                 string.Format("{0}/api/forge/callback/ondata/json?id={1}", OAuthController.GetAppSetting("FORGE_WEBHOOK_URL"), browerConnectionId)
             );
 
-            /*
-            string zipWorkItemId = await CreateWorkItem(
-                input,
-                oauth.access_token,
-                browerConnectionId,
-                "outputZip",
-                string.Format("https://developer.api.autodesk.com/oss/v2/buckets/{0}/objects/{1}", BucketKey, kOutputFileName)
-            );
-            */
-
             return Ok(new {
                 PngWorkItemId = "pngWorkItemId",
-                JsonWorkItemId = "jsonWorkItemId",
-                ZipWorkItemId = "zipWorkItemId"
+                JsonWorkItemId = "jsonWorkItemId"
             });
         }
         private async Task<string> CreateWorkItem(JObject input, Dictionary<string, string> headers, string browerConnectionId, string outputName, string fileName, string url)
@@ -359,7 +362,6 @@ namespace forgeSample.Controllers
                 {
                     { "inputJson", inputJsonArgument },
                     { outputName, outputArgument },
-                    //{ "onProgress", new XrefTreeArgument { Verb = Verb.Post, Url = callbackProgress } },
                     { "onComplete", new XrefTreeArgument { Verb = Verb.Post, Url = callbackComplete } }
                 }
             };
@@ -383,36 +385,6 @@ namespace forgeSample.Controllers
 
             await _hubContext.Clients.Client(id).SendAsync("onComponents", data.ToString(Formatting.None));
             
-            return Ok();
-        }
-
-        /// <summary>
-        /// Define a new appbundle
-        /// basic: curl -X POST --header "Content-Type:application/json" --data '{"hello":"value"}' http://localhost:3000/api/forge/callback/onprogress
-        /// </summary>
-        [HttpPost]
-        [Route("api/forge/callback/onprogress")]
-        public async Task<IActionResult> OnProgress(string id, [FromBody]JObject data)
-        {
-            System.Diagnostics.Debug.WriteLine("OnProgress, data = " + data.ToString());
-
-            if (!data.ContainsKey("progress"))
-                return Ok();
-
-            try
-            {
-                string base64 = data["progress"].Value<string>();
-
-                if (base64.StartsWith("png"))
-                    await _hubContext.Clients.Client(id).SendAsync("onPicture", base64);
-                else
-                    await _hubContext.Clients.Client(id).SendAsync("onComponents", base64);
-            }
-            catch (Exception e)
-            {
-                System.Diagnostics.Debug.WriteLine("OnProgress, e.Message = " + e.Message);
-            }
-
             return Ok();
         }
 
@@ -456,43 +428,20 @@ namespace forgeSample.Controllers
         }
 
         /// <summary>
-        /// Return a list of available engines
-        /// </summary>
-        [HttpGet]
-        [Route("api/forge/designautomation/engines")]
-        public async Task<List<string>> GetAvailableEngines()
-        {
-            dynamic oauth = await OAuthController.GetInternalAsync();
-
-            // define Engines API
-            Page<string> engines = await _designAutomation.GetEnginesAsync();
-            engines.Data.Sort();
-
-            return engines.Data; // return list of engines
-        }
-
-        /// <summary>
         /// Clear the accounts (for debugging purposes)
         /// </summary>
         [HttpDelete]
         [Route("api/forge/designautomation/account")]
         public async Task<IActionResult> ClearAccount()
         {
+           if (OAuthController.GetAppSetting("DISABLE_SETUP") == "true")
+           {
+               return Unauthorized();
+           }
+
             // clear account
             await _designAutomation.DeleteForgeAppAsync("me");
             return Ok();
-        }
-
-        /// <summary>
-        /// Names of app bundles on this project
-        /// </summary>
-        [HttpGet]
-        [Route("api/appbundles")]
-        public string[] GetLocalBundles()
-        {
-            // this folder is placed under the public folder, which may expose the bundles
-            // but it was defined this way so it be published on most hosts easily
-            return Directory.GetFiles(LocalBundlesFolder, "*.zip").Select(Path.GetFileNameWithoutExtension).ToArray();
         }
     }
 

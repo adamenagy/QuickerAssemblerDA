@@ -20,7 +20,7 @@ namespace forgeSample
         {
             services.AddMvc(options => {
                 options.EnableEndpointRouting = false;
-                options.ModelMetadataDetailsProviders.Add(new SuppressChildValidationMetadataProvider(typeof(Stream)));
+                //options.ModelMetadataDetailsProviders.Add(new SuppressChildValidationMetadataProvider(typeof(Stream)));
                 options.InputFormatters.Insert(0, new RawRequestBodyFormatter());
             }).SetCompatibilityVersion(CompatibilityVersion.Version_3_0).AddNewtonsoftJson();
             services.AddSignalR();
@@ -54,10 +54,8 @@ namespace forgeSample
     {
         public RawRequestBodyFormatter()
         {
-            SupportedMediaTypes.Add(new MediaTypeHeaderValue("text/plain"));
             SupportedMediaTypes.Add(new MediaTypeHeaderValue("application/octet-stream"));
         }
-
 
         /// <summary>
         /// Allow text/plain, application/octet-stream and no content type to
