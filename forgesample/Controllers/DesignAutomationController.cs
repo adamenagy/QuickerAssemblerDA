@@ -38,6 +38,8 @@ using AppBundle = Autodesk.Forge.DesignAutomation.Model.AppBundle;
 using Parameter = Autodesk.Forge.DesignAutomation.Model.Parameter;
 using WorkItem = Autodesk.Forge.DesignAutomation.Model.WorkItem;
 using WorkItemStatus = Autodesk.Forge.DesignAutomation.Model.WorkItemStatus;
+using System.Security.Cryptography;
+using System.Text;
 
 
 namespace forgeSample.Controllers
@@ -109,8 +111,18 @@ namespace forgeSample.Controllers
             return System.Convert.ToBase64String(plainTextBytes);
         }
 
+        public static string MD5Encode(JObject obj)
+        { 
+            using (MD5 md5 = MD5.Create())
+            {
+                md5.Initialize();
+                md5.ComputeHash(Encoding.UTF8.GetBytes(obj.ToString(Formatting.None)));
+                return BitConverter.ToString(md5.Hash).Replace("-", "");
+            }
+        } 
+
         /// <summary>
-        /// Define a new appbundle
+        /// Upload sample files
         /// </summary>
         [HttpPost]
         [Route("api/forge/designautomation/files")]
@@ -150,31 +162,64 @@ namespace forgeSample.Controllers
                 {
                     dynamic res = await objects.UploadObjectAsync(BucketKey, fileName, (int)streamReader.BaseStream.Length, streamReader.BaseStream, "application/octet-stream");
 
-                    // prepare the payload
-                    List<JobPayloadItem> outputs = new List<JobPayloadItem>()
-                    {
-                        new JobPayloadItem(
-                            JobPayloadItem.TypeEnum.Svf,
-                            new List<JobPayloadItem.ViewsEnum>()
-                            {
-                                JobPayloadItem.ViewsEnum._2d,
-                                JobPayloadItem.ViewsEnum._3d
-                            }
-                        )
-                    };
-                    JobPayload job;
-                    string urn = Base64Encode(res.objectId);
-                    job = new JobPayload(new JobPayloadInput(urn), new JobPayloadOutput(outputs));
-
-                    // start the translation
-                    DerivativesApi derivative = new DerivativesApi();
-                    derivative.Configuration.AccessToken = oauth.access_token;
-
-                    derivative.TranslateAsync(job);
+                    TranslateFile(res.objectId, null);
                 }
             }    
 
             return Ok();
+        }
+
+        private async Task TranslateFile(string objectId, string rootFileName)
+        {
+            dynamic oauth = await OAuthController.GetInternalAsync();
+
+            // prepare the payload
+            List<JobPayloadItem> outputs = new List<JobPayloadItem>()
+            {
+                new JobPayloadItem(
+                    JobPayloadItem.TypeEnum.Svf,
+                    new List<JobPayloadItem.ViewsEnum>()
+                    {
+                        JobPayloadItem.ViewsEnum._2d,
+                        JobPayloadItem.ViewsEnum._3d
+                    }
+                )
+            };
+            JobPayload job;
+            string urn = Base64Encode(objectId);
+            if (rootFileName != null)
+            {
+                job = new JobPayload(new JobPayloadInput(urn, true, rootFileName), new JobPayloadOutput(outputs));
+            }
+            else
+            {
+                job = new JobPayload(new JobPayloadInput(urn), new JobPayloadOutput(outputs));
+            }
+
+            // start the translation
+            DerivativesApi derivative = new DerivativesApi();
+            derivative.Configuration.AccessToken = oauth.access_token;
+
+            await derivative.TranslateAsync(job);
+        }
+
+        /// <summary>
+        /// Get files in bucket
+        /// </summary>
+        [HttpGet]
+        [Route("api/forge/designautomation/files")]
+        public async Task<IActionResult> GetOssFiles()
+        {
+            System.Diagnostics.Debug.WriteLine("GetOssFiles");
+            // OAuth token
+            dynamic oauth = await OAuthController.GetInternalAsync();
+
+            ObjectsApi objects = new ObjectsApi();
+            objects.Configuration.AccessToken = oauth.access_token;
+
+            dynamic res = await objects.GetObjectsAsync(BucketKey);
+            
+            return Ok(res);
         }
 
         /// <summary>
@@ -297,6 +342,24 @@ namespace forgeSample.Controllers
         }
 
         /// <summary>
+        /// Define a new activity
+        /// </summary>
+        public static async Task<bool> IsInCache(string fileName)
+        {
+            dynamic oauth = await OAuthController.GetInternalAsync();
+            ObjectsApi objects = new ObjectsApi();
+            objects.Configuration.AccessToken = oauth.access_token;
+
+            try
+            {
+                dynamic res = await objects.GetObjectDetailsAsync (BucketKey, fileName);
+                return true;
+            } catch {}
+            
+            return false;
+        } 
+
+        /// <summary>
         /// Start a new workitem
         /// </summary>
         [HttpPost]
@@ -305,12 +368,16 @@ namespace forgeSample.Controllers
         {
             System.Diagnostics.Debug.WriteLine("StartWorkitem");
             string browerConnectionId = input["browerConnectionId"].Value<string>();
+            bool useCache = input["useCache"].Value<bool>();
+            string pngWorkItemId = "skipped";
+            string jsonWorkItemId = "skipped";
+            string zipWorkItemId = "skipped";
 
             // OAuth token
             dynamic oauth = await OAuthController.GetInternalAsync();
 
             string pngFileName = browerConnectionId + ".png";                
-            string pngWorkItemId = await CreateWorkItem(
+            pngWorkItemId = await CreateWorkItem(
                 input,
                 new Dictionary<string, string>() { { "Authorization", "Bearer " + oauth.access_token } },
                 browerConnectionId,
@@ -319,8 +386,48 @@ namespace forgeSample.Controllers
                 string.Format("https://developer.api.autodesk.com/oss/v2/buckets/{0}/objects/{1}", BucketKey, pngFileName)
             );
 
+            if (useCache) {
+                string hash = MD5Encode(input["params"] as JObject);
+                string zipFileName = hash + ".zip"; 
+                double [] cells = new double [] {
+                    1, 0, 0, 0,
+                    0, 1, 0, 0,
+                    0, 0, 1, 0,
+                    0, 0, 0, 1
+                };       
+                if (await IsInCache(zipFileName))
+                {
+                    JObject data = new JObject(
+                        new JProperty("components",
+                            new JArray(
+                                new JObject(
+                                    new JProperty("fileName", zipFileName),
+                                    new JProperty("cells", cells)
+                                )
+                            )
+                        )
+                    );
+                    await SendComponentsDataToClient(browerConnectionId, data);
+
+                    return Ok(new {
+                        PngWorkItemId = pngWorkItemId,
+                        JsonWorkItemId = jsonWorkItemId,
+                        ZipWorkItemId = zipWorkItemId
+                    });
+                } else {  
+                    zipWorkItemId = await CreateWorkItem(
+                        input,
+                        new Dictionary<string, string>() { { "Authorization", "Bearer " + oauth.access_token } },
+                        browerConnectionId,
+                        "outputZip",
+                        zipFileName,
+                        string.Format("https://developer.api.autodesk.com/oss/v2/buckets/{0}/objects/{1}", BucketKey, zipFileName)
+                    );
+                }
+            }
+
             string jsonFileName = browerConnectionId + ".json";
-            string jsonWorkItemId = await CreateWorkItem(
+            jsonWorkItemId = await CreateWorkItem(
                 input,
                 new Dictionary<string, string>() { { "Content-Type", "application/json" } },
                 browerConnectionId,
@@ -330,8 +437,9 @@ namespace forgeSample.Controllers
             );
 
             return Ok(new {
-                PngWorkItemId = "pngWorkItemId",
-                JsonWorkItemId = "jsonWorkItemId"
+                PngWorkItemId = pngWorkItemId,
+                JsonWorkItemId = jsonWorkItemId,
+                ZipWorkItemId = zipWorkItemId
             });
         }
         private async Task<string> CreateWorkItem(JObject input, Dictionary<string, string> headers, string browerConnectionId, string outputName, string fileName, string url)
@@ -370,6 +478,12 @@ namespace forgeSample.Controllers
             return workItemStatus.Id;
         }
 
+        private async Task SendComponentsDataToClient(string id, JObject data)
+        {
+            data["urnBase"] = "urn:adsk.objects:os.object:" + BucketKey + "/";
+            await _hubContext.Clients.Client(id).SendAsync("onComponents", data.ToString(Formatting.None));
+        }
+
         /// <summary>
         /// Define a new appbundle
         /// test with curl:
@@ -379,13 +493,12 @@ namespace forgeSample.Controllers
         /// </summary>
         [HttpPut]
         [Route("api/forge/callback/ondata/json")]
-        public async Task<IActionResult> OnData([FromRoute] string dataType, [FromQuery] string id, [FromBody] JObject data)
+        public async Task<IActionResult> OnData([FromQuery] string id, [FromBody] JObject data)
         {
-            System.Diagnostics.Debug.WriteLine("OnData, dataType = " + dataType);
+            System.Diagnostics.Debug.WriteLine("OnData");
 
             // urnBase, something like "urn:adsk.objects:os.object:rgm0mo9jvssd2ybedk9mrtxqtwsa61y0-designautomation/"
-            data["urnBase"] = "urn:adsk.objects:os.object:" + BucketKey + "/";
-            await _hubContext.Clients.Client(id).SendAsync("onComponents", data.ToString(Formatting.None));
+            await SendComponentsDataToClient(id, data);
             
             return Ok();
         }
@@ -418,6 +531,12 @@ namespace forgeSample.Controllers
                     objects.Configuration.AccessToken = oauth.access_token;
                     dynamic signedUrl = await objects.CreateSignedResourceAsyncWithHttpInfo(BucketKey, outputFile, new PostBucketsSigned(10), "read");
                     await _hubContext.Clients.Client(id).SendAsync("onPicture", (string)(signedUrl.Data.signedUrl));
+                } 
+
+                if (outputFile.EndsWith(".zip"))
+                {
+                    string objectId = "urn:adsk.objects:os.object:" + BucketKey + "/" + outputFile;
+                    TranslateFile(objectId, "shelves.iam");
                 } 
             }
             catch (Exception e) 

@@ -110,15 +110,18 @@ function uploadSourceFiles(cb) {
 
 function showProgressIcon(show) {
    $("#progressIcon").css('display', (show) ? 'block' : 'none')
+   $("#startWorkitem").prop('disabled', show)
 }
 
 function startWorkitem() {
     showProgressIcon(true)
 
+    let useCache = $("#useCache").is(":checked")
     let width = Math.floor($("#forgeViewer").width())
     let height = Math.floor($("#forgeViewer").height())
     var data = {
         browerConnectionId: connectionId,
+        useCache: useCache,
         params: {
             height: `\"${$("#height").val()}\"`,
             shelfWidth: `\"${$("#shelfWidth").val()}\"`,
@@ -126,10 +129,7 @@ function startWorkitem() {
         },
         screenshot: {
             width: width,
-            height: height,
-            position: [10, 10, 10],
-            target: [0, 0, 0],
-            up: [0, 0, 1]
+            height: height
         }
     };
     writeLog(data);
