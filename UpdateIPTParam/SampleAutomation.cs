@@ -114,45 +114,10 @@ namespace UpdateIPTParam
             Camera cam = m_server.TransientObjects.CreateCamera();
             cam.SceneObject = acd;
 
-            //cam.ViewOrientationType = ViewOrientationTypeEnum.kArbitraryViewOrientation;
-            //JArray values = jParams["target"] as JArray;
-            //cam.Target = tg.CreatePoint(values[0].Value<double>(), values[0].Value<double>(), values[0].Value<double>());
-
             cam.ViewOrientationType = ViewOrientationTypeEnum.kIsoTopRightViewOrientation;
             cam.Fit();
             cam.ApplyWithoutTransition();
             cam.SaveAsBitmap("output.png", width, height, Type.Missing, Type.Missing);
-
-            /*
-            byte [] bytes = System.IO.File.ReadAllBytes("temp.png");
-
-            string base64 = Convert.ToBase64String(bytes);
-            Trace.WriteLine($"base64 = {base64}");
-            IList<string> parts = Split(base64, 500);
-
-            for (int counter = 0; counter < parts.Count; counter++)
-            {
-                //JObject jRoot = new JObject();
-                //jRoot.Add("png", png);
-                //string data = jRoot.ToString(Formatting.None).Replace("\"", "'");
-                //Trace.WriteLine($"data = {data}");
-
-                string part = parts[counter];
-
-                string prefix = "png";
-                if (counter == parts.Count - 1)
-                    prefix += "end";
-                else
-                    prefix += counter.ToString().PadLeft(3, '0');
-
-                GetOnDemandFile(
-                    "onProgress",
-                    "placeholder",
-                    null,
-                    "placeholder",
-                    prefix + part);
-            }
-            */
         }
 
         public void SendPositions(AssemblyComponentDefinition acd)
@@ -188,15 +153,6 @@ namespace UpdateIPTParam
             Trace.WriteLine($"data = {data}");
 
             System.IO.File.WriteAllText("output.json", data);
-
-            /*
-            GetOnDemandFile(
-                "onProgress",
-                "placeholder",
-                null,
-                "placeholder",
-                data);
-                */
         }
 
         public void ZipModelFiles(AssemblyDocument asm, string asmPath, string zipPath)
