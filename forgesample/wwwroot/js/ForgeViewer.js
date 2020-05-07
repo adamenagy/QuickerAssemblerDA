@@ -30,7 +30,7 @@ function launchViewer(data) {
 function loadModels(data, objectNameBase) {
     return new Promise(async (resolve, reject) => {       
         console.log('loadModels()');
-        
+
         for (key in data.components) {
             let component = data.components[key]
             var objectName = data.urnBase + component.fileName
@@ -76,8 +76,8 @@ function loadModel(documentId, component) {
             console.log(component.cells)
             console.log(opt)
             viewer.loadDocumentNode(doc, viewables, opt).then(i => {
+                resolve()
             });
-            resolve()
         }
         
         let onDocumentLoadFailure = (viewerErrorCode) => {
