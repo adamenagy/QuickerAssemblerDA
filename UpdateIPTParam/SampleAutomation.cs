@@ -59,14 +59,10 @@ namespace UpdateIPTParam
 
                 string data = System.IO.File.ReadAllText(paramsPath);
                 LogTrace("After reading " + paramsJsonFile);
-                //this errors out :-s >> LogTrace($"Params content = {data}");
 
                 JObject jParamsRoot = JObject.Parse(data);
                 string text = jParamsRoot.ToString(Formatting.None);
                 Trace.WriteLine(text);
-
-                //LogTrace("Updating...");
-                //asm.Update2(true);
 
                 var directUpload = false;
                 do {
@@ -85,8 +81,8 @@ namespace UpdateIPTParam
                         if (directUpload)
                         {
                             var outputPngCallback = jParamsRoot["outputPngCallback"].Value<string>();
-                            await UploadFile(outputPngUrl, outputPngFile);
-                            _ = UploadData(outputPngCallback, "{ }");
+                            await UploadFileAsync(outputPngUrl, outputPngFile);
+                            _ = UploadDataAsync(outputPngCallback, "{ }");
                         }
                     }
 
@@ -95,8 +91,7 @@ namespace UpdateIPTParam
                         string positionData = SavePositions(asm.ComponentDefinition);
                         if (directUpload)
                         {
-                            //_ = UploadFile(outputJsonUrl, outputJsonFile);
-                            _ = UploadData(outputJsonUrl, positionData);
+                            _ = UploadDataAsync(outputJsonUrl, positionData);
                         }
                     }
 
@@ -114,7 +109,7 @@ namespace UpdateIPTParam
 
                         if (directUpload)
                         {
-                            _ = UploadFile(outputZipUrl, outputZipFile);
+                            _ = UploadFileAsync(outputZipUrl, outputZipFile);
                         }
                     }
 
@@ -122,14 +117,14 @@ namespace UpdateIPTParam
 
                     if (directUpload)
                     {
-                        jParamsRoot = await GetData(jParamsRoot["dataCallback"].Value<string>());
+                        jParamsRoot = await GetDataAsync(jParamsRoot["dataCallback"].Value<string>());
                     }
                 } while (directUpload);
             }
             catch (Exception e) { LogTrace("RunAsync. Processing failed: {0}", e.ToString()); }
         }
 
-        public async Task UploadFile(string url, string fileName)
+        public async Task UploadFileAsync(string url, string fileName)
         {
             LogTrace("[UploadFile]");
             LogTrace(url + " / " + fileName);
@@ -145,7 +140,7 @@ namespace UpdateIPTParam
             }
         }
 
-        public async Task UploadData(string url, string data)
+        public async Task UploadDataAsync(string url, string data)
         {
             try
             {
@@ -166,7 +161,7 @@ namespace UpdateIPTParam
             catch (Exception e) { LogTrace("UploadData. Processing failed: {0}", e.ToString()); }
         }
 
-        public async Task<JObject> GetData(string url)
+        public async Task<JObject> GetDataAsync(string url)
         {
             LogTrace("[GetData]");
             LogTrace(url);

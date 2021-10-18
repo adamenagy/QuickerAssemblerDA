@@ -164,13 +164,13 @@ namespace forgeSample.Controllers
 
                 dynamic res = await objects.UploadObjectAsync(BucketKey, fileName, (int)streamReader.BaseStream.Length, streamReader.BaseStream, "application/octet-stream");
 
-                _ = TranslateFile(res.objectId, null);
+                _ = TranslateFileAsync(res.objectId, null);
             }    
 
             return Ok();
         }
 
-        private async Task TranslateFile(string objectId, string rootFileName)
+        private async Task TranslateFileAsync(string objectId, string rootFileName)
         {
             dynamic oauth = await OAuthController.GetInternalAsync();
 
@@ -366,7 +366,7 @@ namespace forgeSample.Controllers
         /// <summary>
         /// Define a new activity
         /// </summary>
-        public static async Task<bool> IsInCache(string fileName)
+        public static async Task<bool> IsInCacheAsync(string fileName)
         {
             dynamic oauth = await OAuthController.GetInternalAsync();
             ObjectsApi objects = new ObjectsApi();
@@ -405,7 +405,7 @@ namespace forgeSample.Controllers
             string pngFileName = hash + ".png";
             string jsonFileName = browserConnectionId + ".json";
 
-            if (useCache && await IsInCache(zipFileName))
+            if (useCache && await IsInCacheAsync(zipFileName))
             {
                 double[] cells = new double[] {
                     1, 0, 0, 0,
@@ -414,7 +414,7 @@ namespace forgeSample.Controllers
                     0, 0, 0, 1
                 };
 
-                _ = SendPictureUrlToClient(browserConnectionId, pngFileName);
+                _ = SendPictureUrlToClientAsync(browserConnectionId, pngFileName);
 
                 JObject data = new JObject(
                     new JProperty("components",
@@ -426,7 +426,7 @@ namespace forgeSample.Controllers
                         )
                     )
                 );
-                _ = SendComponentsDataToClient(browserConnectionId, data);
+                _ = SendComponentsDataToClientAsync(browserConnectionId, data);
 
                 return Ok(new {
                     PngWorkItemId = pngWorkItemId,
@@ -437,7 +437,7 @@ namespace forgeSample.Controllers
 
             if (keepWorkitem)
             {
-                sessionWorkItemId = await CreateSessionWorkItem(
+                sessionWorkItemId = await CreateSessionWorkItemAsync(
                     input,
                     new Dictionary<string, string>() { { "Authorization", "Bearer " + oauth.access_token } },
                     browserConnectionId,
@@ -455,7 +455,7 @@ namespace forgeSample.Controllers
                 });
             }
 
-            pngWorkItemId = await CreateWorkItem(
+            pngWorkItemId = await CreateWorkItemAsync(
                 input,
                 new Dictionary<string, string>() { { "Authorization", "Bearer " + oauth.access_token } },
                 browserConnectionId,
@@ -466,7 +466,7 @@ namespace forgeSample.Controllers
 
             if (useCache)
             {
-                zipWorkItemId = await CreateWorkItem(
+                zipWorkItemId = await CreateWorkItemAsync(
                     input,
                     new Dictionary<string, string>() { { "Authorization", "Bearer " + oauth.access_token } },
                     browserConnectionId,
@@ -476,7 +476,7 @@ namespace forgeSample.Controllers
                 );
             }
 
-            jsonWorkItemId = await CreateWorkItem(
+            jsonWorkItemId = await CreateWorkItemAsync(
                 input,
                 new Dictionary<string, string>() { { "Content-Type", "application/json" } },
                 browserConnectionId,
@@ -492,7 +492,7 @@ namespace forgeSample.Controllers
                 SessionWorkItemId = sessionWorkItemId
             });
         }
-        private async Task<string> CreateWorkItem(JObject input, Dictionary<string, string> headers, string browserConnectionId, string outputName, string fileName, string url)
+        private async Task<string> CreateWorkItemAsync(JObject input, Dictionary<string, string> headers, string browserConnectionId, string outputName, string fileName, string url)
         {
             input["directUpload"] = false;
             input[outputName] = url;
@@ -530,7 +530,7 @@ namespace forgeSample.Controllers
             return workItemStatus.Id;
         }
 
-        private async Task<string> CreateSessionWorkItem(JObject input, Dictionary<string, string> headers, string browserConnectionId, string jsonFileName, string pngFileName, string zipFileName)
+        private async Task<string> CreateSessionWorkItemAsync(JObject input, Dictionary<string, string> headers, string browserConnectionId, string jsonFileName, string pngFileName, string zipFileName)
         {
             if (zipFileName != null)
             {
@@ -583,13 +583,13 @@ namespace forgeSample.Controllers
             return workItemStatus.Id;
         }
 
-        private async Task SendComponentsDataToClient(string id, JObject data)
+        private async Task SendComponentsDataToClientAsync(string id, JObject data)
         {
             data["urnBase"] = "urn:adsk.objects:os.object:" + BucketKey + "/";
             await _hubContext.Clients.Client(id).SendAsync("onComponents", data.ToString(Formatting.None));
         }
 
-        private async Task SendStringToClient(string id, string data)
+        private async Task SendStringToClientAsync(string id, string data)
         {
             await _hubContext.Clients.Client(id).SendAsync("onComplete", data);
         }
@@ -621,7 +621,7 @@ namespace forgeSample.Controllers
             return signedUrl.Data.signedUrl;
         }
 
-        private async Task SendPictureUrlToClient(string id, string pngFile)
+        private async Task SendPictureUrlToClientAsync(string id, string pngFile)
         {
             System.Diagnostics.Debug.WriteLine("SendPictureUrlToClient: " + pngFile);
 
@@ -644,10 +644,10 @@ namespace forgeSample.Controllers
 
             // urnBase, something like "urn:adsk.objects:os.object:rgm0mo9jvssd2ybedk9mrtxqtwsa61y0-designautomation/"
             if (fileType == "json")
-                _ = SendComponentsDataToClient(id, data);
+                _ = SendComponentsDataToClientAsync(id, data);
 
             if (fileType == "png")
-                _ = SendPictureUrlToClient(id, outputFile);
+                _ = SendPictureUrlToClientAsync(id, outputFile);
                 
             return Ok();
         }
@@ -658,7 +658,7 @@ namespace forgeSample.Controllers
         /// </summary>
         [HttpGet]
         [Route("api/forge/designautomation/data")]
-        public async Task<IActionResult> GetData([FromQuery] string id)
+        public async Task<IActionResult> GetDataAsync([FromQuery] string id)
         {
             System.Diagnostics.Debug.WriteLine("GetData");
 
@@ -680,7 +680,7 @@ namespace forgeSample.Controllers
             {
                 // your webhook should return immediately! we can use Hangfire to schedule a job
                 JObject bodyJson = JObject.Parse((string)body.ToString());
-                _ = SendStringToClient(id, bodyJson.ToString());
+                _ = SendStringToClientAsync(id, bodyJson.ToString());
 
                 if (_runningWorkitems.ContainsKey(id) && _runningWorkitems[id] == bodyJson["id"].Value<string>())
                 {
@@ -692,17 +692,17 @@ namespace forgeSample.Controllers
 
                 byte[] bs = client.DownloadData(request);
                 string report = System.Text.Encoding.Default.GetString(bs);
-                _ = SendStringToClient(id, report);
+                _ = SendStringToClientAsync(id, report);
 
                 if (outputFile.EndsWith(".png"))
                 {
-                    _ = SendPictureUrlToClient(id, outputFile);
+                    _ = SendPictureUrlToClientAsync(id, outputFile);
                 } 
 
                 if (outputFile.EndsWith(".zip"))
                 {
                     string objectId = "urn:adsk.objects:os.object:" + BucketKey + "/" + outputFile;
-                    _ = TranslateFile(objectId, "shelves.iam");
+                    _ = TranslateFileAsync(objectId, "shelves.iam");
                 } 
             }
             catch (Exception e) 
