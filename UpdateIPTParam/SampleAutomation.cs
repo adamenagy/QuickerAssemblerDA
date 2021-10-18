@@ -10,6 +10,8 @@ using System.Threading;
 using Autodesk.Forge.DesignAutomation.Inventor.Utils;
 using System.IO.Compression;
 using System.Linq;
+using System.Threading.Tasks;
+using System.Net.Http;
 
 namespace UpdateIPTParam
 {
@@ -19,10 +21,28 @@ namespace UpdateIPTParam
         private InventorServer m_server;
         public SampleAutomation(InventorServer app) { m_server = app; }
 
+        public const string shelvesIamFile = "shelves.iam";
+        public const string paramsJsonFile = "params.json";
+        public const string outputPngFile = "output.png";
+        public const string outputZipFile = "output.zip";
+        public const string outputJsonFile = "output.json";
+
         public void Run(Document doc)
+        {
+            var task = RunAsync(doc);
+            task.Wait(60000); // 1 minute
+            if (task.Exception != null)
+            {
+                throw task.Exception;
+            }
+        }
+
+        public async Task RunAsync(Document doc)
         {
             try
             {
+                LogTrace("v3");
+
                 string curDir = System.IO.Directory.GetCurrentDirectory();
                 LogTrace("Current dir = " + curDir);
 
@@ -31,50 +51,136 @@ namespace UpdateIPTParam
 
                 var docDir = System.IO.Path.Combine(dllDdir, "Shelving");
 
-                var asm = m_server.Documents.Open(System.IO.Path.Combine(docDir, "shelves.iam"), false) as AssemblyDocument;
+                var asm = m_server.Documents.Open(System.IO.Path.Combine(docDir, shelvesIamFile), false) as AssemblyDocument;
                 LogTrace("Assembly path = " + asm.FullFileName);
 
-                string paramsPath = System.IO.Path.Combine(curDir, "params.json");
+                string paramsPath = System.IO.Path.Combine(curDir, paramsJsonFile);
                 LogTrace("Params path = " + paramsPath);
 
                 string data = System.IO.File.ReadAllText(paramsPath);
-                LogTrace("After reading params.json");
+                LogTrace("After reading " + paramsJsonFile);
                 //this errors out :-s >> LogTrace($"Params content = {data}");
 
                 JObject jParamsRoot = JObject.Parse(data);
                 string text = jParamsRoot.ToString(Formatting.None);
-                Trace.Write(text);
-
-                GenerateShelving(asm.ComponentDefinition, jParamsRoot["params"] as JObject);
+                Trace.WriteLine(text);
 
                 //LogTrace("Updating...");
                 //asm.Update2(true);
 
-                var output = jParamsRoot["output"].Value<string>();
-                switch (output)
-                {
-                    case "outputPng":
-                        SendPicture(asm.ComponentDefinition, jParamsRoot["screenshot"] as JObject);
-                        break;
+                var directUpload = false;
+                do {
+                    directUpload = jParamsRoot["directUpload"].Value<bool>();
+                    var outputPngUrl = jParamsRoot.ContainsKey("outputPngUrl") ? jParamsRoot["outputPngUrl"].Value<string>() : null;
+                    var outputJsonUrl = jParamsRoot.ContainsKey("outputJsonUrl") ? jParamsRoot["outputJsonUrl"].Value<string>() : null;
+                    var outputZipUrl = jParamsRoot.ContainsKey("outputZipUrl") ? jParamsRoot["outputZipUrl"].Value<string>() : null;
 
-                    case "outputJson":
-                        SendPositions(asm.ComponentDefinition);
-                        break;
+                    Transaction t = m_server.TransactionManager.StartTransaction(asm as _Document, "MyTransaction");
 
-                    default:
+                    GenerateShelving(asm.ComponentDefinition, jParamsRoot["params"] as JObject);
+
+                    if (outputPngUrl != null)
+                    {
+                        SavePicture(asm.ComponentDefinition, jParamsRoot["screenshot"] as JObject);
+                        if (directUpload)
+                        {
+                            var outputPngCallback = jParamsRoot["outputPngCallback"].Value<string>();
+                            await UploadFile(outputPngUrl, outputPngFile);
+                            _ = UploadData(outputPngCallback, "{ }");
+                        }
+                    }
+
+                    if (outputJsonUrl != null)
+                    {
+                        string positionData = SavePositions(asm.ComponentDefinition);
+                        if (directUpload)
+                        {
+                            //_ = UploadFile(outputJsonUrl, outputJsonFile);
+                            _ = UploadData(outputJsonUrl, positionData);
+                        }
+                    }
+
+                    if (outputZipUrl != null)
+                    {
                         // We don't have the right to save files in the AppBundle's folder,
                         // so we'll save it to the working folder
                         LogTrace("Saving...");
-                        var asmPath = System.IO.Path.Combine(curDir, "shelves.iam");
+                        var asmPath = System.IO.Path.Combine(curDir, shelvesIamFile);
                         asm.SaveAs(asmPath, true);
 
                         LogTrace("Zipping up files...");
-                        string zipPath = System.IO.Path.Combine(curDir, "output.zip");
+                        string zipPath = System.IO.Path.Combine(curDir, outputZipFile);
                         ZipModelFiles(asm, asmPath, zipPath);
-                        break;
-                }  
+
+                        if (directUpload)
+                        {
+                            _ = UploadFile(outputZipUrl, outputZipFile);
+                        }
+                    }
+
+                    t.Abort();
+
+                    if (directUpload)
+                    {
+                        jParamsRoot = await GetData(jParamsRoot["dataCallback"].Value<string>());
+                    }
+                } while (directUpload);
             }
-            catch (Exception e) { LogTrace("Processing failed: {0}", e.ToString()); }
+            catch (Exception e) { LogTrace("RunAsync. Processing failed: {0}", e.ToString()); }
+        }
+
+        public async Task UploadFile(string url, string fileName)
+        {
+            LogTrace("[UploadFile]");
+            LogTrace(url + " / " + fileName);
+            string curDir = System.IO.Directory.GetCurrentDirectory();
+            string filePath = System.IO.Path.Combine(curDir, fileName);
+            using (var client = new HttpClient())
+            using (var fileStream = new StreamContent(System.IO.File.Open(filePath, System.IO.FileMode.Open, System.IO.FileAccess.Read)))
+            {
+                LogTrace("[UploadFile.PutAsync]");
+                var response = await client.PutAsync(url, fileStream);
+                LogTrace("[/UploadFile.PutAsync]");
+                LogTrace("[/UploadFile]");
+            }
+        }
+
+        public async Task UploadData(string url, string data)
+        {
+            try
+            {
+                LogTrace("[UploadData]");
+                LogTrace(url);
+                using (var client = new HttpClient())
+                {
+
+                    //LogTrace(jsonContent.Headers.ContentType.ToString());
+                    //jsonContent.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
+                    var content = new StringContent(data);
+                    content.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse("application/json");
+                    //client.DefaultRequestHeaders.Add("Content-Type", "application/json");
+                    var response = await client.PutAsync(url, content);// jsonContent);
+                    LogTrace("[/UploadData]");
+                }
+            }
+            catch (Exception e) { LogTrace("UploadData. Processing failed: {0}", e.ToString()); }
+        }
+
+        public async Task<JObject> GetData(string url)
+        {
+            LogTrace("[GetData]");
+            LogTrace(url);
+            using (var client = new HttpClient())
+            {
+                var response = await client.GetAsync(url);
+                LogTrace("[/GetData]");
+
+                var data = await response.Content.ReadAsStringAsync();
+
+                JObject j = JObject.Parse(data);
+
+                return j;
+            }
         }
 
         public void GenerateShelving(AssemblyComponentDefinition acd, JObject jParams)
@@ -88,7 +194,7 @@ namespace UpdateIPTParam
             acd.Parameters["Columns"].Expression = numberOfColumns;
             acd.Parameters["ShelfWidth"].Expression = shelfWidth;
             // Kick off the model update
-            acd.Parameters["iTrigger0"].Expression = $"{(acd.Parameters["iTrigger0"].Value + 1).ToString()}";
+            acd.Parameters["iTrigger0"].Expression = $"{((double)acd.Parameters["iTrigger0"].Value + 1).ToString()}";
         }
 
         static IList<string> Split(string str, int chunkSize)
@@ -104,9 +210,9 @@ namespace UpdateIPTParam
             return list;
         }
 
-        public void SendPicture(AssemblyComponentDefinition acd, JObject jParams)
+        public void SavePicture(AssemblyComponentDefinition acd, JObject jParams)
         {
-            Trace.WriteLine("SendPicture, jParams = " + jParams.ToString(Formatting.None));
+            Trace.WriteLine("SavePicture, jParams = " + jParams.ToString(Formatting.None));
             var width = jParams["width"].Value<int>();
             var height = jParams["height"].Value<int>();
 
@@ -117,18 +223,18 @@ namespace UpdateIPTParam
             cam.ViewOrientationType = ViewOrientationTypeEnum.kIsoTopRightViewOrientation;
             cam.Fit();
             cam.ApplyWithoutTransition();
-            cam.SaveAsBitmap("output.png", width, height, Type.Missing, Type.Missing);
+            cam.SaveAsBitmap(outputPngFile, width, height, Type.Missing, Type.Missing);
         }
 
-        public void SendPositions(AssemblyComponentDefinition acd)
+        public string SavePositions(AssemblyComponentDefinition acd)
         {
-            Trace.WriteLine("SendPositions");
+            Trace.WriteLine("SavePositions");
             JObject jRoot = new JObject();
 
             JArray jComponents = new JArray();
             foreach (ComponentOccurrence occ in acd.Occurrences)
             {
-                PartDocument doc = occ.Definition.Document;
+                PartDocument doc = occ.Definition.Document as PartDocument;
                 string fileName = System.IO.Path.GetFileName(doc.FullFileName);
           
                 JObject jComponent = new JObject();
@@ -152,7 +258,9 @@ namespace UpdateIPTParam
             string data = jRoot.ToString(Formatting.None);
             Trace.WriteLine($"data = {data}");
 
-            System.IO.File.WriteAllText("output.json", data);
+            System.IO.File.WriteAllText(outputJsonFile, data);
+
+            return data;
         }
 
         public void ZipModelFiles(AssemblyDocument asm, string asmPath, string zipPath)
@@ -167,40 +275,6 @@ namespace UpdateIPTParam
                     fileName = System.IO.Path.GetFileName(f.FullFileName);
                     archive.CreateEntryFromFile(f.FullFileName, fileName);
                 }
-            }
-        }
-
-        private static bool GetOnDemandFile(string name, string suffix, string headers, string responseFile, string content)
-        {
-            // writing a string (formatted according to ACESAPI format) to trace
-            // invokes the onDemand call to get the desired optional input file
-            LogTrace("!ACESAPI:acesHttpOperation({0},{1},{2},{3},{4})",
-                name ?? "", suffix ?? "", headers ?? "", content ?? "", responseFile ?? "");
-
-            // waiting for a control character indicating
-            // that the download has successfully finished
-            int idx = 0;
-            while (true)
-            {
-                char ch = Convert.ToChar(Console.Read());
-                // error
-                if (ch == '\x3')
-                {
-                    return false;
-                }
-                // success
-                else if (ch == '\n')
-                {
-                    return true;
-                }
-
-                // to many unexpected characters already read from console,
-                // treating as other error / timeout
-                if (idx >= 16)
-                {
-                    return false;
-                }
-                idx++;
             }
         }
 

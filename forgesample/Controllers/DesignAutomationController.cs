@@ -55,7 +55,7 @@ namespace forgeSample.Controllers
         public string LocalBundlesFolder { get { return Path.Combine(_env.WebRootPath, "bundles"); } }
         public string LocalFilesFolder { get { return Path.Combine(_env.WebRootPath, "files"); } }
         /// Prefix for AppBundles and Activities
-        public static string NickName { get { return OAuthController.GetAppSetting("FORGE_CLIENT_ID"); } }
+        public static string NickName { get { return "AdamNagy"; } } // OAuthController.GetAppSetting("FORGE_CLIENT_ID"); } }
         public static string BucketKey { get { return NickName.ToLower() + "-designautomation"; } }
 
         public static string QualifiedBundleActivityName { get { return string.Format("{0}.{1}+{2}", NickName, kBundleActivityName, Alias); } }
@@ -63,6 +63,9 @@ namespace forgeSample.Controllers
         public static string Alias { get { return "dev"; } }
         // Design Automation v3 API
         DesignAutomationClient _designAutomation;
+
+        public static Dictionary<string, string> _runningWorkitems = new Dictionary<string, string>();
+        public static Dictionary<string, TaskCompletionSource<JObject>> _runningWorkitemTasks = new Dictionary<string, TaskCompletionSource<JObject>>();
 
         public const string kEngineName = "Autodesk.Inventor+24";
         public const string kBundleActivityName = "UpdateIPTParam";
@@ -99,7 +102,7 @@ namespace forgeSample.Controllers
         /// </summary>
         private string CommandLine()
         {
-            return $"$(engine.path)\\InventorCoreConsole.exe /al $(appbundles[{kBundleActivityName}].path)";
+            return $"$(engine.path)\\InventorCoreConsole.exe /al \"$(appbundles[{kBundleActivityName}].path)\"";
         }
 
         /// <summary>
@@ -112,13 +115,12 @@ namespace forgeSample.Controllers
         }
 
         public static string MD5Encode(JObject obj)
-        { 
-            using (MD5 md5 = MD5.Create())
-            {
-                md5.Initialize();
-                md5.ComputeHash(Encoding.UTF8.GetBytes(obj.ToString(Formatting.None)));
-                return BitConverter.ToString(md5.Hash).Replace("-", "");
-            }
+        {
+            using MD5 md5 = MD5.Create();
+
+            md5.Initialize();
+            md5.ComputeHash(Encoding.UTF8.GetBytes(obj.ToString(Formatting.None)));
+            return BitConverter.ToString(md5.Hash).Replace("-", "");
         } 
 
         /// <summary>
@@ -158,12 +160,11 @@ namespace forgeSample.Controllers
             foreach (string filePath in filePaths)
             {
                 string fileName = System.IO.Path.GetFileName(filePath);
-                using (StreamReader streamReader = new StreamReader(filePath))
-                {
-                    dynamic res = await objects.UploadObjectAsync(BucketKey, fileName, (int)streamReader.BaseStream.Length, streamReader.BaseStream, "application/octet-stream");
+                using StreamReader streamReader = new StreamReader(filePath);
 
-                    TranslateFile(res.objectId, null);
-                }
+                dynamic res = await objects.UploadObjectAsync(BucketKey, fileName, (int)streamReader.BaseStream.Length, streamReader.BaseStream, "application/octet-stream");
+
+                _ = TranslateFile(res.objectId, null);
             }    
 
             return Ok();
@@ -242,12 +243,21 @@ namespace forgeSample.Controllers
             if (!System.IO.File.Exists(packageZipPath)) throw new Exception("Appbundle not found at " + packageZipPath);
 
             // get defined app bundles
-            Page<string> appBundles = await _designAutomation.GetAppBundlesAsync();
+            List<string> allAppBbundles = new List<string>();
+            string paginationToken = null;
+            while (true)
+            {
+                Page<string> appBundles = await _designAutomation.GetAppBundlesAsync(paginationToken);
+                allAppBbundles.AddRange(appBundles.Data);
+                if (appBundles.PaginationToken == null)
+                    break;
+                paginationToken = appBundles.PaginationToken;
+            }
 
             // check if app bundle is already define
             dynamic newAppVersion;
             string qualifiedAppBundleId = string.Format("{0}.{1}+{2}", NickName, kBundleActivityName, Alias);
-            if (!appBundles.Data.Contains(qualifiedAppBundleId))
+            if (!allAppBbundles.Contains(qualifiedAppBundleId))
             {
                 // create an appbundle (version 1)
                 AppBundle appBundleSpec = new AppBundle()
@@ -309,8 +319,20 @@ namespace forgeSample.Controllers
             }
 
             System.Diagnostics.Debug.WriteLine("CreateActivity");
-            Page<string> activities = await _designAutomation.GetActivitiesAsync();
-            if (!activities.Data.Contains(QualifiedBundleActivityName))
+
+
+            List<string> allActivities = new List<string>();
+            string paginationToken = null;
+            while (true)
+            { 
+                Page<string> activities = await _designAutomation.GetActivitiesAsync(paginationToken);
+                allActivities.AddRange(activities.Data);
+                if (activities.PaginationToken == null)
+                    break;
+                paginationToken = activities.PaginationToken;
+            }
+
+            if (!allActivities.Contains(QualifiedBundleActivityName))
             {
                 string commandLine = CommandLine();
                 Activity activitySpec = new Activity()
@@ -322,9 +344,9 @@ namespace forgeSample.Controllers
                     Parameters = new Dictionary<string, Parameter>()
                     {
                         { "inputJson", new Parameter() { Description = "input json", LocalName = "params.json", Ondemand = false, Required = true, Verb = Verb.Get, Zip = false } },
-                        { "outputZip", new Parameter() { Description = "output zip file", LocalName = "output.zip", Ondemand = false, Required = false, Verb = Verb.Put, Zip = false } },
-                        { "outputPng", new Parameter() { Description = "output png file", LocalName = "output.png", Ondemand = false, Required = false, Verb = Verb.Put, Zip = false } },
-                        { "outputJson", new Parameter() { Description = "output json file", LocalName = "output.json", Ondemand = false, Required = false, Verb = Verb.Put, Zip = false } }
+                        { "outputZipUrl", new Parameter() { Description = "output zip file", LocalName = "output.zip", Ondemand = false, Required = false, Verb = Verb.Put, Zip = false } },
+                        { "outputPngUrl", new Parameter() { Description = "output png file", LocalName = "output.png", Ondemand = false, Required = false, Verb = Verb.Put, Zip = false } },
+                        { "outputJsonUrl", new Parameter() { Description = "output json file", LocalName = "output.json", Ondemand = false, Required = false, Verb = Verb.Put, Zip = false } }
                     }
                 };
                 Activity newActivity = await _designAutomation.CreateActivityAsync(activitySpec);
@@ -367,88 +389,118 @@ namespace forgeSample.Controllers
         public async Task<IActionResult> StartWorkitems([FromBody]JObject input)
         {
             System.Diagnostics.Debug.WriteLine("StartWorkitem");
-            string browerConnectionId = input["browerConnectionId"].Value<string>();
+            string browserConnectionId = input["browserConnectionId"].Value<string>();
             bool useCache = input["useCache"].Value<bool>();
+            bool keepWorkitem = input["keepWorkitem"].Value<bool>();
             string pngWorkItemId = "skipped";
             string jsonWorkItemId = "skipped";
             string zipWorkItemId = "skipped";
+            string sessionWorkItemId = "skipped";
 
             // OAuth token
             dynamic oauth = await OAuthController.GetInternalAsync();
 
-            string pngFileName = browerConnectionId + ".png";                
-            pngWorkItemId = await CreateWorkItem(
-                input,
-                new Dictionary<string, string>() { { "Authorization", "Bearer " + oauth.access_token } },
-                browerConnectionId,
-                "outputPng",
-                pngFileName,
-                string.Format("https://developer.api.autodesk.com/oss/v2/buckets/{0}/objects/{1}", BucketKey, pngFileName)
-            );
+            string hash = MD5Encode(input["params"] as JObject);
+            string zipFileName = hash + ".zip";
+            string pngFileName = hash + ".png";
+            string jsonFileName = browserConnectionId + ".json";
 
-            if (useCache) {
-                string hash = MD5Encode(input["params"] as JObject);
-                string zipFileName = hash + ".zip"; 
-                double [] cells = new double [] {
+            if (useCache && await IsInCache(zipFileName))
+            {
+                double[] cells = new double[] {
                     1, 0, 0, 0,
                     0, 1, 0, 0,
                     0, 0, 1, 0,
                     0, 0, 0, 1
-                };       
-                if (await IsInCache(zipFileName))
-                {
-                    JObject data = new JObject(
-                        new JProperty("components",
-                            new JArray(
-                                new JObject(
-                                    new JProperty("fileName", zipFileName),
-                                    new JProperty("cells", cells)
-                                )
+                };
+
+                _ = SendPictureUrlToClient(browserConnectionId, pngFileName);
+
+                JObject data = new JObject(
+                    new JProperty("components",
+                        new JArray(
+                            new JObject(
+                                new JProperty("fileName", zipFileName),
+                                new JProperty("cells", cells)
                             )
                         )
-                    );
-                    await SendComponentsDataToClient(browerConnectionId, data);
+                    )
+                );
+                _ = SendComponentsDataToClient(browserConnectionId, data);
 
-                    return Ok(new {
-                        PngWorkItemId = pngWorkItemId,
-                        JsonWorkItemId = jsonWorkItemId,
-                        ZipWorkItemId = zipWorkItemId
-                    });
-                } else {  
-                    zipWorkItemId = await CreateWorkItem(
-                        input,
-                        new Dictionary<string, string>() { { "Authorization", "Bearer " + oauth.access_token } },
-                        browerConnectionId,
-                        "outputZip",
-                        zipFileName,
-                        string.Format("https://developer.api.autodesk.com/oss/v2/buckets/{0}/objects/{1}", BucketKey, zipFileName)
-                    );
-                }
+                return Ok(new {
+                    PngWorkItemId = pngWorkItemId,
+                    JsonWorkItemId = jsonWorkItemId,
+                    ZipWorkItemId = zipWorkItemId
+                });
             }
 
-            string jsonFileName = browerConnectionId + ".json";
+            if (keepWorkitem)
+            {
+                sessionWorkItemId = await CreateSessionWorkItem(
+                    input,
+                    new Dictionary<string, string>() { { "Authorization", "Bearer " + oauth.access_token } },
+                    browserConnectionId,
+                    jsonFileName,
+                    pngFileName,
+                    useCache ? zipFileName : null
+                );
+
+                return Ok(new
+                {
+                    PngWorkItemId = pngWorkItemId,
+                    JsonWorkItemId = jsonWorkItemId,
+                    ZipWorkItemId = zipWorkItemId,
+                    SessionWorkItemId = sessionWorkItemId
+                });
+            }
+
+            pngWorkItemId = await CreateWorkItem(
+                input,
+                new Dictionary<string, string>() { { "Authorization", "Bearer " + oauth.access_token } },
+                browserConnectionId,
+                "outputPngUrl",
+                pngFileName,
+                string.Format("https://developer.api.autodesk.com/oss/v2/buckets/{0}/objects/{1}", BucketKey, pngFileName)
+            );
+
+            if (useCache)
+            {
+                zipWorkItemId = await CreateWorkItem(
+                    input,
+                    new Dictionary<string, string>() { { "Authorization", "Bearer " + oauth.access_token } },
+                    browserConnectionId,
+                    "outputZipUrl",
+                    zipFileName,
+                    string.Format("https://developer.api.autodesk.com/oss/v2/buckets/{0}/objects/{1}", BucketKey, zipFileName)
+                );
+            }
+
             jsonWorkItemId = await CreateWorkItem(
                 input,
                 new Dictionary<string, string>() { { "Content-Type", "application/json" } },
-                browerConnectionId,
-                "outputJson",
+                browserConnectionId,
+                "outputJsonUrl",
                 jsonFileName,
-                string.Format("{0}/api/forge/callback/ondata/json?id={1}", OAuthController.GetAppSetting("FORGE_WEBHOOK_URL"), browerConnectionId)
+                string.Format("{0}/api/forge/callback/ondata/json?id={1}", OAuthController.GetAppSetting("FORGE_WEBHOOK_URL"), browserConnectionId)
             );
 
             return Ok(new {
                 PngWorkItemId = pngWorkItemId,
                 JsonWorkItemId = jsonWorkItemId,
-                ZipWorkItemId = zipWorkItemId
+                ZipWorkItemId = zipWorkItemId,
+                SessionWorkItemId = sessionWorkItemId
             });
         }
-        private async Task<string> CreateWorkItem(JObject input, Dictionary<string, string> headers, string browerConnectionId, string outputName, string fileName, string url)
+        private async Task<string> CreateWorkItem(JObject input, Dictionary<string, string> headers, string browserConnectionId, string outputName, string fileName, string url)
         {
-            input["output"] = outputName;
+            input["directUpload"] = false;
+            input[outputName] = url;
             XrefTreeArgument inputJsonArgument = new XrefTreeArgument()
             {
                 Url = "data:application/json," + input.ToString(Formatting.None)
             };
+            input.Remove(outputName);
 
             XrefTreeArgument outputArgument = new XrefTreeArgument()
             {
@@ -460,7 +512,7 @@ namespace forgeSample.Controllers
             string callbackComplete = string.Format(
                 "{0}/api/forge/callback/oncomplete?id={1}&outputFile={2}", 
                 OAuthController.GetAppSetting("FORGE_WEBHOOK_URL"), 
-                browerConnectionId, 
+                browserConnectionId, 
                 fileName);
 
             WorkItem workItemSpec = new WorkItem()
@@ -478,10 +530,103 @@ namespace forgeSample.Controllers
             return workItemStatus.Id;
         }
 
+        private async Task<string> CreateSessionWorkItem(JObject input, Dictionary<string, string> headers, string browserConnectionId, string jsonFileName, string pngFileName, string zipFileName)
+        {
+            if (zipFileName != null)
+            {
+                input["outputZipUrl"] = zipFileName;
+            }
+
+            input["directUpload"] = true;
+            input["outputJsonUrl"] = string.Format("{0}/api/forge/callback/ondata/json?id={1}", OAuthController.GetAppSetting("FORGE_WEBHOOK_URL"), browserConnectionId);
+            
+            //input["outputPngUrl"] = pngFileName;
+            string signedUrl = await CreateSignedResourceAsync(pngFileName, "write");
+            input["outputPngUrl"] = signedUrl;
+
+            //input["outputPngUrl"] = string.Format("{0}/api/forge/callback/ondata/png?id={1}", OAuthController.GetAppSetting("FORGE_WEBHOOK_URL"), browserConnectionId);
+            input["outputPngCallback"] = string.Format("{0}/api/forge/callback/ondata/png?id={1}&outputFile={2}", OAuthController.GetAppSetting("FORGE_WEBHOOK_URL"), browserConnectionId, pngFileName);
+
+            input["dataCallback"] = string.Format("{0}/api/forge/designautomation/data?id={1}", OAuthController.GetAppSetting("FORGE_WEBHOOK_URL"), browserConnectionId);
+
+            if (_runningWorkitems.ContainsKey(browserConnectionId))
+            {
+                _runningWorkitemTasks[browserConnectionId].SetResult(input);
+
+                return _runningWorkitems[browserConnectionId];
+            }
+
+            XrefTreeArgument inputJsonArgument = new XrefTreeArgument()
+            {
+                Url = "data:application/json," + input.ToString(Formatting.None)
+            };
+
+            string callbackComplete = string.Format(
+                "{0}/api/forge/callback/oncomplete?id={1}&outputFile={2}",
+                OAuthController.GetAppSetting("FORGE_WEBHOOK_URL"),
+                browserConnectionId,
+                jsonFileName);
+
+            WorkItem workItemSpec = new WorkItem()
+            {
+                ActivityId = QualifiedBundleActivityName,
+                Arguments = new Dictionary<string, IArgument>()
+                {
+                    { "inputJson", inputJsonArgument },
+                    { "onComplete", new XrefTreeArgument { Verb = Verb.Post, Url = callbackComplete } }
+                }
+            };
+            WorkItemStatus workItemStatus = await _designAutomation.CreateWorkItemAsync(workItemSpec);
+
+            _runningWorkitems[browserConnectionId] = workItemStatus.Id;
+
+            return workItemStatus.Id;
+        }
+
         private async Task SendComponentsDataToClient(string id, JObject data)
         {
             data["urnBase"] = "urn:adsk.objects:os.object:" + BucketKey + "/";
             await _hubContext.Clients.Client(id).SendAsync("onComponents", data.ToString(Formatting.None));
+        }
+
+        private async Task SendStringToClient(string id, string data)
+        {
+            await _hubContext.Clients.Client(id).SendAsync("onComplete", data);
+        }
+
+        private async Task<string> CreateSignedResourceAsync(string fileName, string accessType)
+        {
+            System.Diagnostics.Debug.WriteLine("CreateSignedResourceAsync: " + fileName);
+
+            dynamic oauth = await OAuthController.GetInternalAsync();
+            ObjectsApi objects = new ObjectsApi();
+            objects.Configuration.AccessToken = oauth.access_token;
+
+            dynamic details;
+            try
+            {
+                details = await objects.GetObjectDetailsAsyncWithHttpInfo(BucketKey, fileName);
+            }
+            catch (Autodesk.Forge.Client.ApiException ex)
+            {
+                if (ex.ErrorCode == 404)
+                {
+                    await objects.UploadObjectAsyncWithHttpInfo(BucketKey, fileName, 0, new MemoryStream(0));
+                }
+            }
+            
+            // if using "readwrite" then it should succeed even if the file does not exist yet
+            dynamic signedUrl = await objects.CreateSignedResourceAsyncWithHttpInfo(BucketKey, fileName, new PostBucketsSigned(10), accessType);
+
+            return signedUrl.Data.signedUrl;
+        }
+
+        private async Task SendPictureUrlToClient(string id, string pngFile)
+        {
+            System.Diagnostics.Debug.WriteLine("SendPictureUrlToClient: " + pngFile);
+
+            string signedUrl = await CreateSignedResourceAsync(pngFile, "read");
+            await _hubContext.Clients.Client(id).SendAsync("onPicture", signedUrl);
         }
 
         /// <summary>
@@ -492,15 +637,35 @@ namespace forgeSample.Controllers
         /// json: curl -X POST --header "Content-Type:application/json" --data '{"hello":"value"}' http://localhost:3000/api/forge/callback/ondata/json
         /// </summary>
         [HttpPut]
-        [Route("api/forge/callback/ondata/json")]
-        public async Task<IActionResult> OnData([FromQuery] string id, [FromBody] JObject data)
+        [Route("api/forge/callback/ondata/{fileType}")]
+        public async Task<IActionResult> OnData([FromRoute] string fileType, [FromQuery] string id, [FromQuery] string outputFile, [FromBody] dynamic data)
         {
-            System.Diagnostics.Debug.WriteLine("OnData");
+            System.Diagnostics.Debug.WriteLine("OnData: " + outputFile);
 
             // urnBase, something like "urn:adsk.objects:os.object:rgm0mo9jvssd2ybedk9mrtxqtwsa61y0-designautomation/"
-            await SendComponentsDataToClient(id, data);
-            
+            if (fileType == "json")
+                _ = SendComponentsDataToClient(id, data);
+
+            if (fileType == "png")
+                _ = SendPictureUrlToClient(id, outputFile);
+                
             return Ok();
+        }
+
+        /// <summary>
+        /// Called by the code in the app bundle to get the latest data 
+        /// to use for the model configuration
+        /// </summary>
+        [HttpGet]
+        [Route("api/forge/designautomation/data")]
+        public async Task<IActionResult> GetData([FromQuery] string id)
+        {
+            System.Diagnostics.Debug.WriteLine("GetData");
+
+            _runningWorkitemTasks[id] = new TaskCompletionSource<JObject>();
+            JObject data = await _runningWorkitemTasks[id].Task;
+
+            return Ok(data.ToString());
         }
 
         /// <summary>
@@ -515,28 +680,29 @@ namespace forgeSample.Controllers
             {
                 // your webhook should return immediately! we can use Hangfire to schedule a job
                 JObject bodyJson = JObject.Parse((string)body.ToString());
-                await _hubContext.Clients.Client(id).SendAsync("onComplete", bodyJson.ToString());
+                _ = SendStringToClient(id, bodyJson.ToString());
+
+                if (_runningWorkitems.ContainsKey(id) && _runningWorkitems[id] == bodyJson["id"].Value<string>())
+                {
+                    _runningWorkitems.Remove(id);
+                }
 
                 var client = new RestClient(bodyJson["reportUrl"].Value<string>());
                 var request = new RestRequest(string.Empty);
 
                 byte[] bs = client.DownloadData(request);
                 string report = System.Text.Encoding.Default.GetString(bs);
-                await _hubContext.Clients.Client(id).SendAsync("onComplete", report);
+                _ = SendStringToClient(id, report);
 
                 if (outputFile.EndsWith(".png"))
                 {
-                    dynamic oauth = await OAuthController.GetInternalAsync();
-                    ObjectsApi objects = new ObjectsApi();
-                    objects.Configuration.AccessToken = oauth.access_token;
-                    dynamic signedUrl = await objects.CreateSignedResourceAsyncWithHttpInfo(BucketKey, outputFile, new PostBucketsSigned(10), "read");
-                    await _hubContext.Clients.Client(id).SendAsync("onPicture", (string)(signedUrl.Data.signedUrl));
+                    _ = SendPictureUrlToClient(id, outputFile);
                 } 
 
                 if (outputFile.EndsWith(".zip"))
                 {
                     string objectId = "urn:adsk.objects:os.object:" + BucketKey + "/" + outputFile;
-                    TranslateFile(objectId, "shelves.iam");
+                    _ = TranslateFile(objectId, "shelves.iam");
                 } 
             }
             catch (Exception e) 

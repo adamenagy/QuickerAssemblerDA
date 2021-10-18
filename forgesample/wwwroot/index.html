@@ -19,7 +19,7 @@
     <script src="/js/ForgeViewer.js"></script>
     <style>
         #outputlog {
-            height: calc(100vh - 475px);
+            height: calc(100vh - 479px);
         }
         #forgeViewer {
             height: 100%; 
@@ -46,6 +46,10 @@
             margin-top: 15px; 
             cursor: pointer; 
             display: none;
+        }
+
+        .form-group.cb {
+            margin-bottom: 0px;
         }
 
         .previewImage {
@@ -140,25 +144,33 @@
                         <option value="4">4</option>
                     </select>
                 </div>
-                <div class="form-group">
+                <div class="form-group cb">
                     <div class="form-check">
                         <input class="form-check-input" type="checkbox" id="hideLoading" required>
                         <label class="form-check-label" for="hideLoading">
-                          Show preview while model is loading in Viewer
+                            Show preview while model is loading in Viewer
                         </label>
-                      </div>
+                    </div>
                 </div>
-                <div class="form-group">
+                <div class="form-group cb">
                     <div class="form-check">
                         <input class="form-check-input" type="checkbox" id="useCache" required>
                         <label class="form-check-label" for="useCache">
-                          Use cache for storing and loading models
+                            Use cache for storing and loading models
                         </label>
-                      </div>
+                    </div>
+                </div>
+                <div class="form-group cb">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="keepWorkitem" required>
+                        <label class="form-check-label" for="keepWorkitem">
+                            Keep workitem running (max 1 minute)
+                        </label>
+                    </div>
                 </div>
 
-                <center><button class="btn btn-primary disabled" id="startWorkitem">Start workitem</button></center><br />
-                <div class="form-group" >
+                <center><button class="btn btn-primary disabled" id="startWorkitem">Start/Update workitem</button></center><br />
+                <div class="form-group">
                     <pre id="outputlog" class="form-control"></pre>
                 </div>
             </div>

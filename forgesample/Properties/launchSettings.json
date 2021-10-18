@@ -12,18 +12,22 @@
       "commandName": "IISExpress",
       "launchBrowser": true,
       "environmentVariables": {
-        "FORGE_CLIENT_SECRET": "Wdb16c2ddba244df",
+        "FORGE_CLIENT_SECRET": "-",
         "ASPNETCORE_URLS": "http://localhost:3000",
-        "FORGE_CLIENT_ID": "rGm0mO9jVSsD2yBEDk9MRtXQTwsa61y0",
+        "FORGE_CLIENT_ID": "-",
         "ASPNETCORE_ENVIRONMENT": "Development",
-        "FORGE_WEBHOOK_URL": "http://b03ccb86.ngrok.io"
+        "FORGE_WEBHOOK_URL": "https://2457-86-2-185-49.ngrok.io"
       }
     },
     "forgesample": {
       "commandName": "Project",
       "launchBrowser": true,
       "environmentVariables": {
-        "ASPNETCORE_ENVIRONMENT": "Development"
+        "FORGE_CLIENT_SECRET": "-",
+        "ASPNETCORE_URLS": "http://localhost:3000",
+        "FORGE_CLIENT_ID": "-",
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "FORGE_WEBHOOK_URL": "https://3240-193-151-121-18.ngrok.io"
       },
       "applicationUrl": "http://localhost:50000/"
     }

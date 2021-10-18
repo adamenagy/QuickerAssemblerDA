@@ -62,7 +62,7 @@ function createAppBundleActivity() {
     startConnection(function () {
         writeLog("Uploading sample files");
         uploadSourceFiles()
-        writeLog("Defining appbundle and activity for " + $('#engines').val());
+        writeLog("Defining appbundle and activity");
         $("#defineActivityModal").modal('toggle');
         createAppBundle(function () {
             createActivity()
@@ -117,22 +117,24 @@ function startWorkitem() {
     showProgressIcon(true)
 
     let useCache = $("#useCache").is(":checked")
+    let keepWorkitem = $("#keepWorkitem").is(":checked")
     let width = Math.floor($("#forgeViewer").width())
     let height = Math.floor($("#forgeViewer").height())
     var data = {
-        browerConnectionId: connectionId,
-        useCache: useCache,
+        browserConnectionId: connectionId,
+        useCache,
+        keepWorkitem,
         params: {
             height: `\"${$("#height").val()}\"`,
             shelfWidth: `\"${$("#shelfWidth").val()}\"`,
             numberOfColumns: `${$("#numberOfColumns").val()}`
         },
         screenshot: {
-            width: width,
-            height: height
+            width,
+            height
         }
     };
-    writeLog(data);
+
     startConnection(function () {
         writeLog('Starting workitem...');
         $.ajax({
@@ -141,7 +143,7 @@ function startWorkitem() {
             data: JSON.stringify(data),
             type: 'POST',
             success: function (res) {
-                writeLog(`Workitems started: ${res.pngWorkItemId}, ${res.jsonWorkItemId}, ${res.zipWorkItemId}`);
+                writeLog(`Workitems started: \n- png: ${res.pngWorkItemId}\n- json: ${res.jsonWorkItemId}\n- zip: ${res.zipWorkItemId}\n- session: ${res.sessionWorkItemId}`);
             }
         });
     });
@@ -189,8 +191,9 @@ function startConnection(onReady) {
         if (hideLoading) {
             $('#previewImage').toggleClass('coverViewer')
         }
-        
-        await launchViewer(JSON.parse(message))
+
+        let json = JSON.parse(message);
+        await launchViewer(json)
         console.log('Reveal Viewer')
 
         if (hideLoading) {
