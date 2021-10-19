@@ -2,7 +2,7 @@
 
 Based on the Design Automation tutorial sample from learnforge.autodesk.io 
 
-Before being able to use this sample you need to have a **Forge subscription** and then reach out to **forge.help@autodesk.com** in order to enable **Open Network** for yor **Forge app**. See this for more info: [Open Network in Preview](https://forge.autodesk.com/blog/open-network-preview)
+In order to use the "Keep workitem running (max 1 minute)" option in the sample, you need to have a **Forge subscription** and then reach out to **forge.help@autodesk.com** to get **Open Network** enabled for yor **Forge app**. See this for more info: [Open Network in Preview](https://forge.autodesk.com/blog/open-network-preview)
 
 ## Description
 
