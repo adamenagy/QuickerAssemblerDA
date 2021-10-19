@@ -2,6 +2,8 @@
 
 Based on the Design Automation tutorial sample from learnforge.autodesk.io 
 
+Before being able to use this sample you need to have a **Forge subscription** and then reach out to **forge.help@autodesk.com** in order to enable **Open Network** for yor **Forge app**. See this for more info: [Open Network in Preview](https://forge.autodesk.com/blog/open-network-preview)
+
 ## Description
 
 It includes 2 modules:
