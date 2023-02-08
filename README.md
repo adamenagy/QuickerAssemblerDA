@@ -10,3 +10,11 @@ It includes 2 modules:
 - .NET Core web interface to invoke Design Automation v3 and show results. See [readme](forgesample/) for more information.
 
 The `designautomation.sln` includes the bundle and the webapp. The `BUILD` action copy all files to the bundle folder, generate a .zip and copy to the webapp folder. 
+
+## Running
+
+Before running the project make sure that you provide the correct values for the following environment variables. You can set them either inside the project settings of `forgeSample` or some other ways:
+1. `FORGE_CLIENT_ID`: the client ID of your APS app
+1. `FORGE_CLIENT_SECRET`: the client secret of your APS app
+1. `FORGE_WEBHOOK_URL`: the URL of the server where you run this app
+1. `FORGE_NICKNAME`: the nickname that you set for your APS app using the Design Automation's `PATCH	forgeapps/:id` endpoint. If you have not done that, then use the same value as for `FORGE_CLIENT_ID`   
