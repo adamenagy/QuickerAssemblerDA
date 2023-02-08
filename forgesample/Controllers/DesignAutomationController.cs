@@ -55,7 +55,7 @@ namespace forgeSample.Controllers
         public string LocalBundlesFolder { get { return Path.Combine(_env.WebRootPath, "bundles"); } }
         public string LocalFilesFolder { get { return Path.Combine(_env.WebRootPath, "files"); } }
         /// Prefix for AppBundles and Activities
-        public static string NickName { get { return "AdamNagy"; } } // OAuthController.GetAppSetting("FORGE_CLIENT_ID"); } }
+        public static string NickName { get { return OAuthController.GetAppSetting("FORGE_NICKNAME"); } }
         public static string BucketKey { get { return NickName.ToLower() + "-designautomation"; } }
 
         public static string QualifiedBundleActivityName { get { return string.Format("{0}.{1}+{2}", NickName, kBundleActivityName, Alias); } }
