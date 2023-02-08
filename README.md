@@ -15,7 +15,7 @@ The `designautomation.sln` includes the bundle and the webapp. The `BUILD` actio
 
 ## Running
 
-Before running the project make sure that you provide the correct values for the following environment variables. You can set them either inside the project settings of `forgeSample` or some other ways:
+Before running the project make sure that you provide the correct values for the following environment variables. You can set them either inside the project settings of `forgesample` or some other ways:
 1. `FORGE_CLIENT_ID`: the client ID of your APS app
 1. `FORGE_CLIENT_SECRET`: the client secret of your APS app
 1. `FORGE_WEBHOOK_URL`: the URL of the server where you run this app

@@ -68,8 +68,11 @@ At the `.vscode\launch.json`, find the env vars and add your Forge Client ID, Se
     "FORGE_CLIENT_ID": "your id here",
     "FORGE_CLIENT_SECRET": "your secret here",
     "FORGE_WEBHOOK_URL": "http://1234.ngrok.io",
+    "FORGE_NICKNAME": "your app's nickname"
 },
 ```
+
+`FORGE_NICKNAME`: the nickname that you set for your APS app using the Design Automation's `PATCH	forgeapps/:id` endpoint. If you have not done that, then use the same value as for `FORGE_CLIENT_ID` 
 
 **How to use this sample**
 
