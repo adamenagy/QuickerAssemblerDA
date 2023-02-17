@@ -296,12 +296,12 @@ namespace forgeSample.Controllers
 
             // upload the zip with .bundle
             RestClient uploadClient = new RestClient(newAppVersion.UploadParameters.EndpointURL);
-            RestRequest request = new RestRequest(string.Empty, Method.POST);
+            RestRequest request = new RestRequest(string.Empty, Method.Post);
             request.AlwaysMultipartFormData = true;
             foreach (KeyValuePair<string, string> x in newAppVersion.UploadParameters.FormData) request.AddParameter(x.Key, x.Value);
             request.AddFile("file", packageZipPath);
             request.AddHeader("Cache-Control", "no-cache");
-            await uploadClient.ExecuteTaskAsync(request);
+            await uploadClient.ExecuteAsync(request);
 
             return Ok(new { AppBundle = QualifiedBundleActivityName, Version = newAppVersion.Version });
         }

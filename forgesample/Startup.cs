@@ -22,7 +22,7 @@ namespace forgeSample
                 options.EnableEndpointRouting = false;
                 //options.ModelMetadataDetailsProviders.Add(new SuppressChildValidationMetadataProvider(typeof(Stream)));
                 options.InputFormatters.Insert(0, new RawRequestBodyFormatter());
-            }).SetCompatibilityVersion(CompatibilityVersion.Version_3_0).AddNewtonsoftJson();
+            }).AddNewtonsoftJson();
             services.AddSignalR();
         }
 
