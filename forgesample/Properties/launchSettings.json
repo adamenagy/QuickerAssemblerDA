@@ -26,8 +26,9 @@
         "FORGE_CLIENT_SECRET": "-",
         "ASPNETCORE_URLS": "http://localhost:3000",
         "FORGE_CLIENT_ID": "-",
+        "FORGE_NICKNAME": "-",
         "ASPNETCORE_ENVIRONMENT": "Development",
-        "FORGE_WEBHOOK_URL": "https://3240-193-151-121-18.ngrok.io"
+        "FORGE_WEBHOOK_URL": "https://b29c-193-151-121-61.ngrok.io"
       },
       "applicationUrl": "http://localhost:50000/"
     }
