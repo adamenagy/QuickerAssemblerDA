@@ -40,7 +40,7 @@ using WorkItem = Autodesk.Forge.DesignAutomation.Model.WorkItem;
 using WorkItemStatus = Autodesk.Forge.DesignAutomation.Model.WorkItemStatus;
 using System.Security.Cryptography;
 using System.Text;
-
+using System.Net.Http;
 
 namespace forgeSample.Controllers
 {
@@ -294,14 +294,29 @@ namespace forgeSample.Controllers
                 Alias newAlias = await _designAutomation.ModifyAppBundleAliasAsync(kBundleActivityName, Alias, aliasSpec);
             }
 
-            // upload the zip with .bundle
-            RestClient uploadClient = new RestClient(newAppVersion.UploadParameters.EndpointURL);
-            RestRequest request = new RestRequest(string.Empty, Method.Post);
-            request.AlwaysMultipartFormData = true;
-            foreach (KeyValuePair<string, string> x in newAppVersion.UploadParameters.FormData) request.AddParameter(x.Key, x.Value);
-            request.AddFile("file", packageZipPath);
-            request.AddHeader("Cache-Control", "no-cache");
-            await uploadClient.ExecuteAsync(request);
+            // upload the zip with .bundle            
+            using (var client = new HttpClient())
+            {
+                using (var formData = new MultipartFormDataContent())
+                {
+                    foreach (var kv in newAppVersion.UploadParameters.FormData)
+                    {
+                        if (kv.Value != null)
+                        {
+                            formData.Add(new StringContent(kv.Value), kv.Key);
+                        }
+                    }
+                    using (var content = new StreamContent(new FileStream(packageZipPath, FileMode.Open)))
+                    {
+                        formData.Add(content, "file");
+                        using (var request = new HttpRequestMessage(HttpMethod.Post, newAppVersion.UploadParameters.EndpointURL) { Content = formData })
+                        {
+                            var response = await client.SendAsync(request);
+                            response.EnsureSuccessStatusCode();
+                        }
+                    }
+                }
+            }
 
             return Ok(new { AppBundle = QualifiedBundleActivityName, Version = newAppVersion.Version });
         }
