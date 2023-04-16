@@ -20,3 +20,5 @@ Before running the project make sure that you provide the correct values for the
 1. `FORGE_CLIENT_SECRET`: the client secret of your APS app
 1. `FORGE_WEBHOOK_URL`: the URL of the server where you run this app
 1. `FORGE_NICKNAME`: the nickname that you set for your APS app using the Design Automation's `PATCH	forgeapps/:id` endpoint. If you have not done that, then use the same value as for `FORGE_CLIENT_ID`   
+
+After the first compilation of the solution the `UpdateIPTParam\bin\Bundle\UpdateIPTParam.bundle\Contents` folder will be created. Inside it create a folder named `Shelving` and copy all the files in `forgesample\wwwroot\files` folder into it. Then recompile the whole solution again. 

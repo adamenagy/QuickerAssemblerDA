@@ -67,7 +67,7 @@ namespace forgeSample.Controllers
         public static Dictionary<string, string> _runningWorkitems = new Dictionary<string, string>();
         public static Dictionary<string, TaskCompletionSource<JObject>> _runningWorkitemTasks = new Dictionary<string, TaskCompletionSource<JObject>>();
 
-        public const string kEngineName = "Autodesk.Inventor+24";
+        public const string kEngineName = "Autodesk.Inventor+2023";
         public const string kBundleActivityName = "UpdateIPTParam";
         public const string kOutputFileName = "shelves.iam.zip";
 
