@@ -9,7 +9,7 @@
       "type": "coreclr",
       "request": "launch",
       "preLaunchTask": "build",
-      "program": "${workspaceFolder}/bin/Debug/netcoreapp3.0/forgesample.dll",
+      "program": "${workspaceFolder}/bin/Debug/net7.0/forgesample.dll",
       "args": [],
       "cwd": "${workspaceFolder}",
       "stopAtEntry": false,
@@ -21,8 +21,9 @@
         "FORGE_CLIENT_SECRET": "",
         "ASPNETCORE_URLS": "http://localhost:3000",
         "FORGE_CLIENT_ID": "",
+        "FORGE_NICKNAME": "",
         "ASPNETCORE_ENVIRONMENT": "Development",
-        "FORGE_WEBHOOK_URL": "http://3f13fe1d.ngrok.io"
+        "FORGE_WEBHOOK_URL": "https://d069-81-105-47-137.ngrok-free.app"
       },
       "sourceFileMap": {
         "/Views": "${workspaceFolder}/Views"
