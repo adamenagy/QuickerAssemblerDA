@@ -2,7 +2,7 @@
 var counter = 0;
 
 function launchViewer(data) {
-    return new Promise(async (resolve, reject) => {
+    return new Promise(async (resolve) => {
         var options = {
             env: 'AutodeskProduction',
             getAccessToken: getForgeToken
@@ -12,14 +12,20 @@ function launchViewer(data) {
             viewer.tearDown();
             viewer.setUp(viewer.config);
 
-            await loadModels(data)
+            const start = new Date();
+            await loadModels(data);
+            const end = new Date();
+            console.log(`LOADING TIME (useParallelLoading=${window.useParallelLoading === true}): ${end - start}ms`);
 
             resolve()
         } else {
             Autodesk.Viewing.Initializer(options, async () => {
                 viewer = new Autodesk.Viewing.GuiViewer3D(document.getElementById('forgeViewer'), { extensions: ['Autodesk.DocumentBrowser'] });
                 viewer.start();
-                await loadModels(data)
+                const start = new Date();
+                await loadModels(data);
+                const end = new Date();
+                console.log(`LOADING TIME (useParallelLoading=${window.useParallelLoading === true}): ${end - start}ms`);
 
                 resolve()
             });
@@ -27,18 +33,25 @@ function launchViewer(data) {
     })
 }
 
-function loadModels(data, objectNameBase) {
-    return new Promise(async (resolve, reject) => {       
+function loadModels(data) {
+    return new Promise(async (resolve) => {       
         console.log('loadModels()');
 
+        let promises = [];
         for (key in data.components) {
             let component = data.components[key]
             var objectName = data.urnBase + component.fileName
             var documentId = 'urn:' + btoa(objectName);
 
             console.log('before promise, ' + component.fileName)
-            await loadModel(documentId, component)
+            window.useParallelLoading ? 
+              promises.push(loadModel(documentId, component)) :
+              await loadModel(documentId, component);
             console.log('after promise, ' + component.fileName)
+        }
+
+        if (window.useParallelLoading) {
+          await Promise.allSettled(promises);
         }
         
         console.log('All documents loaded');
