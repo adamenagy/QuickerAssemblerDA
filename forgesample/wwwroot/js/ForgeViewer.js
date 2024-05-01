@@ -2,6 +2,7 @@
 var counter = 0;
 
 function launchViewer(data) {
+    window.useParallelLoading = window.useParallelLoading || true;
     return new Promise(async (resolve) => {
         var options = {
             env: 'AutodeskProduction',
